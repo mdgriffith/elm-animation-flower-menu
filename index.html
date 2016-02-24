@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+    <head>
+        <script src="elm.js"></script>
+        <link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+        <style type="text/css">
+            html, body {
+                background-color: #dddddd;
+                font-family:"Open Sans";
+                
+            }
+            a {
+                text-decoration: none;
+            }
+
+            #elm {
+                position:relative;
+                margin:150px auto;
+                height:90px;
+                width:90px;
+                margin-bottom:100px;
+                
+            }
+
+            .main-button {
+                position: absolute;
+                width: 90px;
+                height: 90px;
+                border-radius: 100%;
+                background-color: #68AEF0;
+                cursor: pointer;
+                display: flex;
+                justify-content : center;
+                align-items: center;
+                color: #ffffff;
+                font-weight: lighter;
+                border: 1px solid rgba(0, 0, 0, 0.1);
+            }
+
+            .child-button {
+                position: absolute;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                width: 50px;
+                height: 50px;
+                left:20px;
+                top:20px;
+                border-radius: 100%;
+                background-color: white;
+                box-shadow: rgba(0, 0, 0, 0.2) 0px 1px 3px;
+                color: #8898A5;
+                z-index: -1;
+            }
+
+            .message {
+                color: #aaa;
+                position:absolute;
+                width:100%;
+                text-align: center;
+                bottom:-30px;
+                left:0;
+                font-family: "Courier New";
+                
+            }
+
+            .description {
+                width:500px;
+                position:relative;
+                margin:50px 50px;
+                z-index:0;
+
+            }
+
+
+        </style>
+    </head>
+    <body>
+        <!--[if lt IE 8]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+        <div class="description">
+            <div id="elm"></div>
+            <h1>A Path Menu</h1>
+            <p>This is a recreation of a lovely design for <a href="https://medium.com/@nashvail/a-gentle-introduction-to-react-motion-dc50dd9f2459#.bgck7roe9">a menu made by Nash Vail</a>
+            </p>
+            <p>His original code was written in React using the React Motion library and I wanted to see how this would translate into the <a href="">Elm programming language</a> using the <a href="https://github.com/mdgriffith/elm-html-animation">elm-html-animation</a> library.
+            </p>
+            <p>
+                The code used to create this example can be found on <a href="https://github.com/mdgriffith/elm-html-animation-flower-menu/blob/master/FlowerMenu.elm">github</a>.
+            </p>
+            
+        </div>
+    </body>
+    <script type="text/javascript">
+        var element = document.getElementById("elm");
+        var songwise = Elm.embed(Elm.Main, element);
+    </script>
+</html>
