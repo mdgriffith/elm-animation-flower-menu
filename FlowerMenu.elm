@@ -2,8 +2,8 @@ module Main (..) where
 
 {-| Recreating the menu found here: https://github.com/nashvail/ReactPathMenu
 Make using:
-   elm-make FlowerMenu/FlowerMenu.elm --output FlowerMenu/elm.js
-   open FlowerMenu/index.html
+   elm-make FlowerMenu.elm --output elm.js
+   open index.html
 
 
 -}
