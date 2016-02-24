@@ -59,23 +59,30 @@ update action model =
       if model.open then
         let
           ( submenus, submenuFx ) =
-            UI.stagger
-              (\total i ->
-                UI.animate
-                  |> UI.delay (i * 5.0e-2 * second)
-                  |> UI.spring UI.fastAndLoose
-                  |> UI.props
-                      [ TranslateY (UI.to 0) Px
-                      ]
-              )
-              |> onAllSubmenus model.submenus
+              UI.stagger
+                (\total i ->
+                  UI.animate
+                    |> UI.delay (i * 5.0e-2 * second)
+                    |> UI.spring 
+                          { stiffness = 400
+                          , damping = 28
+                          }
+                    |> UI.props
+                        [ TranslateY (UI.to 0) Px
+                        ]
+                )
+                |> onAllSubmenus model.submenus
 
           ( newMenu, menuFx ) =
-            UI.animate
-              |> UI.props
-                  [ Rotate (UI.to -0.125) Turn
-                  ]
-              |> onMenu model
+              UI.animate
+                |> UI.spring 
+                        { stiffness = 500
+                        , damping = 30
+                        }
+                |> UI.props
+                    [ Rotate (UI.to -0.125) Turn
+                    ]
+                |> onMenu model
         in
           ( { newMenu
               | submenus = submenus
@@ -93,7 +100,10 @@ update action model =
               (\total i ->
                 UI.animate
                   |> UI.delay (i * 2.5e-2 * second)
-                  |> UI.spring UI.fastAndLoose
+                  |> UI.spring 
+                        { stiffness = 400
+                        , damping = 28
+                        }
                   |> UI.props
                       [ TranslateY (UI.to 100) Px
                       ]
@@ -101,11 +111,15 @@ update action model =
               |> onAllSubmenus model.submenus
 
           ( newMenu, menuFx ) =
-            UI.animate
-              |> UI.props
-                  [ Rotate (UI.to 0) Turn
-                  ]
-              |> onMenu model
+              UI.animate
+                |> UI.spring 
+                        { stiffness = 500
+                        , damping = 30
+                        }
+                |> UI.props
+                    [ Rotate (UI.to 0) Turn
+                    ]
+                |> onMenu model
         in
           ( { newMenu
               | submenus = submenus
@@ -130,17 +144,17 @@ update action model =
 
         ( msgStyle, fx ) =
           UI.animate
-            |> UI.props
-                [ Opacity (UI.to 1)
-                ]
+              |> UI.props
+                  [ Opacity (UI.to 1)
+                  ]
             |> UI.andThen
-            |> UI.props
-                [ Opacity (UI.to 0)
-                ]
+              |> UI.props
+                  [ Opacity (UI.to 0)
+                  ]
             |> UI.andThen
-            |> UI.set
-                [ Display None
-                ]
+              |> UI.set
+                  [ Display None
+                  ]
             |> UI.on message.style
 
         msg =
