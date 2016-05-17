@@ -1,4 +1,4 @@
-module Main (..) where
+module Main exposing (..)
 
 {-| Recreating the menu found here: https://github.com/nashvail/ReactPathMenu
 Make using:
@@ -8,127 +8,118 @@ Make using:
 
 -}
 
-import StartApp
-import Task
-import Signal exposing (Signal, Address)
-import Effects exposing (Effects, Never)
-import Time exposing (second)
+import Time exposing (second, Time)
+import Html.App
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Html.Animation as UI
-import Html.Animation.Properties exposing (..)
+-- import Svg exposing (..)
+-- import Svg.Attributes exposing (..)
+import AnimationFrame
+import Style
+import Style.Properties exposing (..)
+import Color exposing (black, rgb)
 
 
 type alias Model =
   { submenus : List Submenu
-  , style : UI.Animation
+  , style : Style.Animation
   , open : Bool
   , message : Maybe Message
   }
 
-
 type alias Submenu =
-  { style : UI.Animation
+  { style : Style.Animation
   , icon : String
   }
 
-
 type alias Message =
   { label : String
-  , style : UI.Animation
+  , style : Style.Animation
   }
 
-
-type Action
+type Msg
   = Toggle
   | ShowMessage String
-  | Animate AnimationTarget
+  | Animate Time
 
-
-type AnimationTarget
-  = OnMenu UI.Action
-  | OnSubmenu Int UI.Action
-  | OnMessage UI.Action
-
-
-update : Action -> Model -> ( Model, Effects Action )
-update action model =
-  case action of
+update : Msg -> Model -> ( Model, Cmd Msg )
+update message model =
+  case message of
     Toggle ->
       if model.open then
         let
-          ( submenus, submenuFx ) =
-              UI.stagger
-                (\total i ->
-                  UI.animate
-                    |> UI.delay (i * 5.0e-2 * second)
-                    |> UI.spring 
-                          { stiffness = 400
-                          , damping = 28
-                          }
-                    |> UI.props
-                        [ TranslateY (UI.to 0) Px
-                        ]
-                )
-                |> onAllSubmenus model.submenus
-
-          ( newMenu, menuFx ) =
-              UI.animate
-                |> UI.spring 
-                        { stiffness = 500
-                        , damping = 30
-                        }
-                |> UI.props
-                    [ Rotate (UI.to -0.125) Turn
-                    ]
-                |> onMenu model
+          submenus =
+              List.indexedMap
+                (\i submenu ->
+                  { submenu
+                      | style =
+                          Style.animate
+                            |> Style.delay (toFloat i * 5.0e-2 * second)
+                            |> Style.spring
+                                  { stiffness = 400
+                                  , damping = 28
+                                  }
+                            |> Style.to
+                                [ TranslateY 0 Px ]
+                            |> Style.on submenu.style
+                  }
+                ) model.submenus
         in
-          ( { newMenu
-              | submenus = submenus
-              , open = False
+          ( { model
+                | submenus = submenus
+                , open = False
+                , style =
+                    Style.animate
+                        |> Style.spring
+                                { stiffness = 500
+                                , damping = 30
+                                }
+                        |> Style.to
+                            [ Rotate -0.125 Turn
+                            ]
+                        |> Style.on model.style
             }
-          , Effects.batch
-              [ submenuFx
-              , menuFx
-              ]
+          , Cmd.none
           )
       else
         let
-          ( submenus, submenuFx ) =
-            UI.stagger
-              (\total i ->
-                UI.animate
-                  |> UI.delay (i * 2.5e-2 * second)
-                  |> UI.spring 
-                        { stiffness = 400
-                        , damping = 28
-                        }
-                  |> UI.props
-                      [ TranslateY (UI.to 100) Px
-                      ]
+          submenus =
+            List.indexedMap
+              (\i submenu ->
+                  { submenu
+                      | style =
+                          Style.animate
+                              |> Style.delay (toFloat i * 2.5e-2 * second)
+                              |> Style.spring
+                                    { stiffness = 400
+                                    , damping = 28
+                                    }
+                              |> Style.to
+                                  [ TranslateY 100 Px
+                                  ]
+                              |> Style.on submenu.style
+                  }
               )
-              |> onAllSubmenus model.submenus
+              model.submenus
 
-          ( newMenu, menuFx ) =
-              UI.animate
-                |> UI.spring 
+          parentStyle =
+              Style.animate
+                |> Style.spring
                         { stiffness = 500
                         , damping = 30
                         }
-                |> UI.props
-                    [ Rotate (UI.to 0) Turn
+                |> Style.to
+                    [ Rotate 0 Turn
                     ]
-                |> onMenu model
+                |> Style.on model.style
         in
-          ( { newMenu
+          ( { model
               | submenus = submenus
+              , style = parentStyle
               , open = True
             }
-          , Effects.batch
-              [ submenuFx
-              , menuFx
-              ]
+          , Cmd.none
           )
 
     ShowMessage str ->
@@ -136,26 +127,26 @@ update action model =
         message =
           { label = str
           , style =
-              UI.init
+              Style.init
                 [ Display Block
                 , Opacity 0
                 ]
           }
 
-        ( msgStyle, fx ) =
-          UI.animate
-              |> UI.props
-                  [ Opacity (UI.to 1)
+        msgStyle =
+          Style.animate
+              |> Style.to
+                  [ Opacity 1
                   ]
-            |> UI.andThen
-              |> UI.props
-                  [ Opacity (UI.to 0)
+              |> Style.andThen
+              |> Style.to
+                  [ Opacity 0
                   ]
-            |> UI.andThen
-              |> UI.set
+              |> Style.andThen
+              |> Style.set
                   [ Display None
                   ]
-            |> UI.on message.style
+              |> Style.on message.style
 
         msg =
           { message | style = msgStyle }
@@ -163,47 +154,43 @@ update action model =
         ( { model
             | message = Just msg
           }
-        , Effects.map (\a -> Animate (OnMessage a)) fx
+        , Cmd.none
         )
 
-    Animate target ->
-      case target of
-        OnMenu action ->
-          onMenu model action
-
-        OnSubmenu i action ->
-          let
-            ( submenus, fx ) =
-              onSubmenu i model.submenus action
-          in
-            ( { model | submenus = submenus }
-            , fx
-            )
-
-        OnMessage action ->
-          case model.message of
-            Nothing ->
-              ( model, Effects.none )
-
-            Just message ->
-              let
-                ( msgStyle, fx ) =
-                  UI.update action message.style
-
-                newMsg =
-                  { message | style = msgStyle }
-              in
-                ( { model | message = Just newMsg }
-                , Effects.map (\a -> Animate (OnMessage a)) fx
-                )
+    Animate time ->
+      ( { model
+            | style = Style.tick time model.style
+            , message =
+                Maybe.map
+                (\msg ->
+                    let
+                      newMsgStyle =
+                            Style.tick time msg.style
+                    in
+                      { msg | style = newMsgStyle }
+                ) model.message
+            , submenus =
+                List.map
+                  (\submenu ->
+                      let
+                        newStyle =
+                          Style.tick time submenu.style
+                      in
+                        { submenu | style = newStyle }
+                  ) model.submenus
+        }
+      , Cmd.none
+      )
 
 
-view : Address Action -> Model -> Html
-view address model =
+
+
+view : Model -> Html Msg
+view model =
   let
     icon =
       i [ class "fa fa-close fa-3x"
-        , style (UI.render model.style)
+        , style (Style.render model.style)
         ] []
 
     message =
@@ -211,31 +198,31 @@ view address model =
         <| Maybe.map viewMessage model.message
 
     submenus =
-      List.map (viewSubmenu address) model.submenus
+      List.map viewSubmenu model.submenus
   in
     div
       [ class "main-button"
-      , onClick address Toggle
+      , onClick Toggle
       ]
       ( icon :: message :: submenus )
 
 
-viewSubmenu : Address Action -> Submenu -> Html
-viewSubmenu address submenu =
+viewSubmenu : Submenu -> Html Msg
+viewSubmenu submenu =
   div
     [ class "child-button"
-    , style (UI.render submenu.style)
-    , onClick address (ShowMessage submenu.icon)
+    , style (Style.render submenu.style)
+    , onClick (ShowMessage submenu.icon)
     ]
     [ i [ class ("fa  fa-lg fa-" ++ submenu.icon) ] []
     ]
 
 
-viewMessage : Message -> Html
+viewMessage : Message -> Html Msg
 viewMessage msg =
   div
     [ class "message"
-    , style (UI.render msg.style)
+    , style (Style.render msg.style)
     ]
     [ text msg.label ]
 
@@ -258,7 +245,7 @@ createSubmenu icon total i =
   in
     { icon = icon
     , style =
-        UI.init
+        Style.init
           [ Rotate angle Turn
           , TranslateY 0 Px
           , Rotate (-1 * angle) Turn
@@ -278,54 +265,29 @@ icons =
 
 
 init =
-  { open = False
+  ( { open = False
   , submenus =
       List.indexedMap
         (\i icon -> createSubmenu icon (List.length icons) i)
         icons
   , style =
-      UI.init
+      Style.init
         [ Rotate -0.125 Turn ]
   , message = Nothing
-  }
+  }, Cmd.none
+  )
 
 
-app =
-  StartApp.start
-    { init = ( init, Effects.none )
-    , update = update
-    , view = view
-    , inputs = []
-    }
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    AnimationFrame.times Animate
 
 
 main =
-  app.html
-
-
-port tasks : Signal (Task.Task Never ())
-port tasks =
-  app.tasks
-
-
-onMenu =
-  UI.forwardTo
-    (\a -> Animate (OnMenu a))
-    .style
-    (\w style -> { w | style = style })
-
-
-onAllSubmenus =
-  UI.forwardToAll
-    (\i a -> Animate <| OnSubmenu i a)
-    .style
-    -- widget style getter
-    (\w style -> { w | style = style })
-
-onSubmenu =
-  UI.forwardToIndex
-    (\i a -> Animate <| OnSubmenu i a)
-    .style
-    -- widget style getter
-    (\w style -> { w | style = style })
-
+    Html.App.program
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        }
