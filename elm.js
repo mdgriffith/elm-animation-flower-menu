@@ -14439,9 +14439,6 @@ var _user$project$Main$Message = F2(
 var _user$project$Main$Animate = function (a) {
 	return {ctor: 'Animate', _0: a};
 };
-var _user$project$Main$subscriptions = function (model) {
-	return _elm_lang$animation_frame$AnimationFrame$times(_user$project$Main$Animate);
-};
 var _user$project$Main$ShowMessage = function (a) {
 	return {ctor: 'ShowMessage', _0: a};
 };
@@ -14505,7 +14502,14 @@ var _user$project$Main$view = function (model) {
 };
 var _user$project$Main$main = {
 	main: _elm_lang$html$Html_App$program(
-		{init: _user$project$Main$init, view: _user$project$Main$view, update: _user$project$Main$update, subscriptions: _user$project$Main$subscriptions})
+		{
+			init: _user$project$Main$init,
+			view: _user$project$Main$view,
+			update: _user$project$Main$update,
+			subscriptions: function (_p2) {
+				return _elm_lang$animation_frame$AnimationFrame$times(_user$project$Main$Animate);
+			}
+		})
 };
 
 var Elm = {};
