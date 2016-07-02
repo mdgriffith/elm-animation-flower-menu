@@ -14187,238 +14187,316 @@ var _mdgriffith$elm_style_animation$Style$tick = F2(
 				_p17._0));
 	});
 
-var _user$project$Main$iconCache = _elm_lang$core$Native_List.fromArray(
-	['pencil', 'at', 'camera', 'bell', 'comment', 'bolt', 'ban', 'code']);
-var _user$project$Main$icons = A2(_elm_lang$core$List$take, 5, _user$project$Main$iconCache);
-var _user$project$Main$fanAngle = 0.11;
-var _user$project$Main$createSubmenu = F3(
-	function (icon, total, i) {
-		var adjustment = 0.5 - (((_elm_lang$core$Basics$toFloat(total) - 1) / 2.0) * _user$project$Main$fanAngle);
-		var angle = (_elm_lang$core$Basics$toFloat(i) * _user$project$Main$fanAngle) + adjustment;
-		return {
-			icon: icon,
-			style: _mdgriffith$elm_style_animation$Style$init(
-				_elm_lang$core$Native_List.fromArray(
-					[
-						A2(_mdgriffith$elm_style_animation$Style_Properties$Rotate, angle, _mdgriffith$elm_style_animation$Style_Properties$Turn),
-						A2(_mdgriffith$elm_style_animation$Style_Properties$TranslateY, 0, _mdgriffith$elm_style_animation$Style_Properties$Px),
-						A2(_mdgriffith$elm_style_animation$Style_Properties$Rotate, -1 * angle, _mdgriffith$elm_style_animation$Style_Properties$Turn)
-					]))
-		};
+var _user$project$Animation$render = F2(
+	function (sheet, id) {
+		var matching = A2(
+			_elm_lang$core$List$filter,
+			function (x) {
+				return _elm_lang$core$Native_Utils.eq(
+					_elm_lang$core$Basics$fst(x),
+					id);
+			},
+			sheet);
+		var _p0 = _elm_lang$core$List$head(matching);
+		if (_p0.ctor === 'Nothing') {
+			return _elm_lang$core$Native_List.fromArray(
+				[]);
+		} else {
+			return _mdgriffith$elm_style_animation$Style$render(
+				_elm_lang$core$Basics$snd(_p0._0));
+		}
 	});
+var _user$project$Animation$styleSheetUpdate = F2(
+	function (fn, sheet) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (_p1) {
+				var _p2 = _p1;
+				var _p3 = _p2._0;
+				return {
+					ctor: '_Tuple2',
+					_0: _p3,
+					_1: A2(fn, _p3, _p2._1)
+				};
+			},
+			sheet);
+	});
+var _user$project$Animation$on = F3(
+	function (sheet, id, anim) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (_p4) {
+				var _p5 = _p4;
+				var _p7 = _p5._1;
+				var _p6 = _p5._0;
+				return _elm_lang$core$Native_Utils.eq(id, _p6) ? {
+					ctor: '_Tuple2',
+					_0: _p6,
+					_1: A2(_mdgriffith$elm_style_animation$Style$on, _p7, anim)
+				} : {ctor: '_Tuple2', _0: _p6, _1: _p7};
+			},
+			sheet);
+	});
+var _user$project$Animation$tick = F2(
+	function (time, sheet) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (_p8) {
+				var _p9 = _p8;
+				return {
+					ctor: '_Tuple2',
+					_0: _p9._0,
+					_1: A2(_mdgriffith$elm_style_animation$Style$tick, time, _p9._1)
+				};
+			},
+			sheet);
+	});
+var _user$project$Animation$styleSheetUpdateBy = F3(
+	function (anim, id, style) {
+		var _p10 = anim;
+		switch (_p10.ctor) {
+			case 'Open':
+				var _p11 = id;
+				switch (_p11.ctor) {
+					case 'Menu':
+						return A2(
+							_mdgriffith$elm_style_animation$Style$on,
+							style,
+							A2(
+								_mdgriffith$elm_style_animation$Style$to,
+								_elm_lang$core$Native_List.fromArray(
+									[
+										A2(_mdgriffith$elm_style_animation$Style_Properties$Rotate, 0, _mdgriffith$elm_style_animation$Style_Properties$Turn)
+									]),
+								A2(
+									_mdgriffith$elm_style_animation$Style$spring,
+									{stiffness: 500, damping: 30},
+									_mdgriffith$elm_style_animation$Style$animate)));
+					case 'Submenu':
+						return A2(
+							_mdgriffith$elm_style_animation$Style$on,
+							style,
+							A2(
+								_mdgriffith$elm_style_animation$Style$to,
+								_elm_lang$core$Native_List.fromArray(
+									[
+										A2(_mdgriffith$elm_style_animation$Style_Properties$TranslateY, 100, _mdgriffith$elm_style_animation$Style_Properties$Px)
+									]),
+								A2(
+									_mdgriffith$elm_style_animation$Style$spring,
+									{stiffness: 400, damping: 28},
+									A2(
+										_mdgriffith$elm_style_animation$Style$delay,
+										(_elm_lang$core$Basics$toFloat(_p11._0) * 2.5e-2) * _elm_lang$core$Time$second,
+										_mdgriffith$elm_style_animation$Style$animate))));
+					default:
+						return style;
+				}
+			case 'Close':
+				var _p12 = id;
+				switch (_p12.ctor) {
+					case 'Menu':
+						return A2(
+							_mdgriffith$elm_style_animation$Style$on,
+							style,
+							A2(
+								_mdgriffith$elm_style_animation$Style$to,
+								_elm_lang$core$Native_List.fromArray(
+									[
+										A2(_mdgriffith$elm_style_animation$Style_Properties$Rotate, -0.125, _mdgriffith$elm_style_animation$Style_Properties$Turn)
+									]),
+								A2(
+									_mdgriffith$elm_style_animation$Style$spring,
+									{stiffness: 500, damping: 30},
+									_mdgriffith$elm_style_animation$Style$animate)));
+					case 'Submenu':
+						return A2(
+							_mdgriffith$elm_style_animation$Style$on,
+							style,
+							A2(
+								_mdgriffith$elm_style_animation$Style$to,
+								_elm_lang$core$Native_List.fromArray(
+									[
+										A2(_mdgriffith$elm_style_animation$Style_Properties$TranslateY, 0, _mdgriffith$elm_style_animation$Style_Properties$Px)
+									]),
+								A2(
+									_mdgriffith$elm_style_animation$Style$spring,
+									{stiffness: 400, damping: 28},
+									A2(
+										_mdgriffith$elm_style_animation$Style$delay,
+										(_elm_lang$core$Basics$toFloat(_p12._0) * 5.0e-2) * _elm_lang$core$Time$second,
+										_mdgriffith$elm_style_animation$Style$animate))));
+					default:
+						return style;
+				}
+			default:
+				var _p13 = id;
+				if (_p13.ctor === 'Message') {
+					return A2(
+						_mdgriffith$elm_style_animation$Style$on,
+						style,
+						A2(
+							_mdgriffith$elm_style_animation$Style$set,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									_mdgriffith$elm_style_animation$Style_Properties$Display(_mdgriffith$elm_style_animation$Style_Properties$None)
+								]),
+							_mdgriffith$elm_style_animation$Style$andThen(
+								A2(
+									_mdgriffith$elm_style_animation$Style$to,
+									_elm_lang$core$Native_List.fromArray(
+										[
+											_mdgriffith$elm_style_animation$Style_Properties$Opacity(0)
+										]),
+									_mdgriffith$elm_style_animation$Style$andThen(
+										A2(
+											_mdgriffith$elm_style_animation$Style$to,
+											_elm_lang$core$Native_List.fromArray(
+												[
+													_mdgriffith$elm_style_animation$Style_Properties$Opacity(1)
+												]),
+											_mdgriffith$elm_style_animation$Style$animate))))));
+				} else {
+					return style;
+				}
+		}
+	});
+var _user$project$Animation$update = F2(
+	function (anim, sheet) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (_p14) {
+				var _p15 = _p14;
+				var _p16 = _p15._0;
+				return {
+					ctor: '_Tuple2',
+					_0: _p16,
+					_1: A3(_user$project$Animation$styleSheetUpdateBy, anim, _p16, _p15._1)
+				};
+			},
+			sheet);
+	});
+var _user$project$Animation$fanAngle = 0.11;
+var _user$project$Animation_ops = _user$project$Animation_ops || {};
+_user$project$Animation_ops['=>'] = F2(
+	function (v0, v1) {
+		return {ctor: '_Tuple2', _0: v0, _1: v1};
+	});
+var _user$project$Animation$Message = {ctor: 'Message'};
+var _user$project$Animation$Menu = {ctor: 'Menu'};
+var _user$project$Animation$Submenu = function (a) {
+	return {ctor: 'Submenu', _0: a};
+};
+var _user$project$Animation$sheet = function (submenus) {
+	return A2(
+		_elm_lang$core$Basics_ops['++'],
+		_elm_lang$core$Native_List.fromArray(
+			[
+				A2(
+				_user$project$Animation_ops['=>'],
+				_user$project$Animation$Menu,
+				_mdgriffith$elm_style_animation$Style$init(
+					_elm_lang$core$Native_List.fromArray(
+						[
+							A2(_mdgriffith$elm_style_animation$Style_Properties$Rotate, -0.125, _mdgriffith$elm_style_animation$Style_Properties$Turn)
+						]))),
+				A2(
+				_user$project$Animation_ops['=>'],
+				_user$project$Animation$Message,
+				_mdgriffith$elm_style_animation$Style$init(
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_mdgriffith$elm_style_animation$Style_Properties$Display(_mdgriffith$elm_style_animation$Style_Properties$Block),
+							_mdgriffith$elm_style_animation$Style_Properties$Opacity(0)
+						])))
+			]),
+		A2(
+			_elm_lang$core$List$map,
+			function (i) {
+				return A2(
+					_user$project$Animation_ops['=>'],
+					_user$project$Animation$Submenu(i),
+					function () {
+						var adjustment = 0.5 - (((_elm_lang$core$Basics$toFloat(submenus) - 1) / 2.0) * _user$project$Animation$fanAngle);
+						var angle = (_elm_lang$core$Basics$toFloat(i) * _user$project$Animation$fanAngle) + adjustment;
+						return _mdgriffith$elm_style_animation$Style$init(
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A2(_mdgriffith$elm_style_animation$Style_Properties$Rotate, angle, _mdgriffith$elm_style_animation$Style_Properties$Turn),
+									A2(_mdgriffith$elm_style_animation$Style_Properties$TranslateY, 0, _mdgriffith$elm_style_animation$Style_Properties$Px),
+									A2(_mdgriffith$elm_style_animation$Style_Properties$Rotate, -1 * angle, _mdgriffith$elm_style_animation$Style_Properties$Turn)
+								]));
+					}());
+			},
+			_elm_lang$core$Native_List.range(0, submenus)));
+};
+var _user$project$Animation$ShowMessage = {ctor: 'ShowMessage'};
+var _user$project$Animation$Close = {ctor: 'Close'};
+var _user$project$Animation$Open = {ctor: 'Open'};
+
+var _user$project$Main$icons = A2(
+	_elm_lang$core$List$take,
+	5,
+	_elm_lang$core$Native_List.fromArray(
+		['pencil', 'at', 'camera', 'bell', 'comment', 'bolt', 'ban', 'code']));
 var _user$project$Main$init = {
 	ctor: '_Tuple2',
 	_0: {
 		open: false,
 		submenus: A2(
-			_elm_lang$core$List$indexedMap,
-			F2(
-				function (i, icon) {
-					return A3(
-						_user$project$Main$createSubmenu,
-						icon,
-						_elm_lang$core$List$length(_user$project$Main$icons),
-						i);
-				}),
+			_elm_lang$core$List$map,
+			function (icon) {
+				return {icon: icon};
+			},
 			_user$project$Main$icons),
-		style: _mdgriffith$elm_style_animation$Style$init(
-			_elm_lang$core$Native_List.fromArray(
-				[
-					A2(_mdgriffith$elm_style_animation$Style_Properties$Rotate, -0.125, _mdgriffith$elm_style_animation$Style_Properties$Turn)
-				])),
-		message: _elm_lang$core$Maybe$Nothing
+		message: _elm_lang$core$Maybe$Nothing,
+		sheet: _user$project$Animation$sheet(
+			_elm_lang$core$List$length(_user$project$Main$icons))
 	},
 	_1: _elm_lang$core$Platform_Cmd$none
-};
-var _user$project$Main$viewMessage = function (msg) {
-	return A2(
-		_elm_lang$html$Html$div,
-		_elm_lang$core$Native_List.fromArray(
-			[
-				_elm_lang$html$Html_Attributes$class('message'),
-				_elm_lang$html$Html_Attributes$style(
-				_mdgriffith$elm_style_animation$Style$render(msg.style))
-			]),
-		_elm_lang$core$Native_List.fromArray(
-			[
-				_elm_lang$html$Html$text(msg.label)
-			]));
 };
 var _user$project$Main$update = F2(
 	function (message, model) {
 		var _p0 = message;
 		switch (_p0.ctor) {
 			case 'Toggle':
-				if (model.open) {
-					var submenus = A2(
-						_elm_lang$core$List$indexedMap,
-						F2(
-							function (i, submenu) {
-								return _elm_lang$core$Native_Utils.update(
-									submenu,
-									{
-										style: A2(
-											_mdgriffith$elm_style_animation$Style$on,
-											submenu.style,
-											A2(
-												_mdgriffith$elm_style_animation$Style$to,
-												_elm_lang$core$Native_List.fromArray(
-													[
-														A2(_mdgriffith$elm_style_animation$Style_Properties$TranslateY, 0, _mdgriffith$elm_style_animation$Style_Properties$Px)
-													]),
-												A2(
-													_mdgriffith$elm_style_animation$Style$spring,
-													{stiffness: 400, damping: 28},
-													A2(
-														_mdgriffith$elm_style_animation$Style$delay,
-														(_elm_lang$core$Basics$toFloat(i) * 5.0e-2) * _elm_lang$core$Time$second,
-														_mdgriffith$elm_style_animation$Style$animate))))
-									});
-							}),
-						model.submenus);
-					return {
-						ctor: '_Tuple2',
-						_0: _elm_lang$core$Native_Utils.update(
-							model,
-							{
-								submenus: submenus,
-								open: false,
-								style: A2(
-									_mdgriffith$elm_style_animation$Style$on,
-									model.style,
-									A2(
-										_mdgriffith$elm_style_animation$Style$to,
-										_elm_lang$core$Native_List.fromArray(
-											[
-												A2(_mdgriffith$elm_style_animation$Style_Properties$Rotate, -0.125, _mdgriffith$elm_style_animation$Style_Properties$Turn)
-											]),
-										A2(
-											_mdgriffith$elm_style_animation$Style$spring,
-											{stiffness: 500, damping: 30},
-											_mdgriffith$elm_style_animation$Style$animate)))
-							}),
-						_1: _elm_lang$core$Platform_Cmd$none
-					};
-				} else {
-					var parentStyle = A2(
-						_mdgriffith$elm_style_animation$Style$on,
-						model.style,
-						A2(
-							_mdgriffith$elm_style_animation$Style$to,
-							_elm_lang$core$Native_List.fromArray(
-								[
-									A2(_mdgriffith$elm_style_animation$Style_Properties$Rotate, 0, _mdgriffith$elm_style_animation$Style_Properties$Turn)
-								]),
-							A2(
-								_mdgriffith$elm_style_animation$Style$spring,
-								{stiffness: 500, damping: 30},
-								_mdgriffith$elm_style_animation$Style$animate)));
-					var submenus = A2(
-						_elm_lang$core$List$indexedMap,
-						F2(
-							function (i, submenu) {
-								return _elm_lang$core$Native_Utils.update(
-									submenu,
-									{
-										style: A2(
-											_mdgriffith$elm_style_animation$Style$on,
-											submenu.style,
-											A2(
-												_mdgriffith$elm_style_animation$Style$to,
-												_elm_lang$core$Native_List.fromArray(
-													[
-														A2(_mdgriffith$elm_style_animation$Style_Properties$TranslateY, 100, _mdgriffith$elm_style_animation$Style_Properties$Px)
-													]),
-												A2(
-													_mdgriffith$elm_style_animation$Style$spring,
-													{stiffness: 400, damping: 28},
-													A2(
-														_mdgriffith$elm_style_animation$Style$delay,
-														(_elm_lang$core$Basics$toFloat(i) * 2.5e-2) * _elm_lang$core$Time$second,
-														_mdgriffith$elm_style_animation$Style$animate))))
-									});
-							}),
-						model.submenus);
-					return {
-						ctor: '_Tuple2',
-						_0: _elm_lang$core$Native_Utils.update(
-							model,
-							{submenus: submenus, style: parentStyle, open: true}),
-						_1: _elm_lang$core$Platform_Cmd$none
-					};
-				}
-			case 'ShowMessage':
-				var message = {
-					label: _p0._0,
-					style: _mdgriffith$elm_style_animation$Style$init(
-						_elm_lang$core$Native_List.fromArray(
-							[
-								_mdgriffith$elm_style_animation$Style_Properties$Display(_mdgriffith$elm_style_animation$Style_Properties$Block),
-								_mdgriffith$elm_style_animation$Style_Properties$Opacity(0)
-							]))
+				return model.open ? {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{
+							open: false,
+							sheet: A2(_user$project$Animation$update, _user$project$Animation$Close, model.sheet)
+						}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				} : {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{
+							open: true,
+							sheet: A2(_user$project$Animation$update, _user$project$Animation$Open, model.sheet)
+						}),
+					_1: _elm_lang$core$Platform_Cmd$none
 				};
-				var msgStyle = A2(
-					_mdgriffith$elm_style_animation$Style$on,
-					message.style,
-					A2(
-						_mdgriffith$elm_style_animation$Style$set,
-						_elm_lang$core$Native_List.fromArray(
-							[
-								_mdgriffith$elm_style_animation$Style_Properties$Display(_mdgriffith$elm_style_animation$Style_Properties$None)
-							]),
-						_mdgriffith$elm_style_animation$Style$andThen(
-							A2(
-								_mdgriffith$elm_style_animation$Style$to,
-								_elm_lang$core$Native_List.fromArray(
-									[
-										_mdgriffith$elm_style_animation$Style_Properties$Opacity(0)
-									]),
-								_mdgriffith$elm_style_animation$Style$andThen(
-									A2(
-										_mdgriffith$elm_style_animation$Style$to,
-										_elm_lang$core$Native_List.fromArray(
-											[
-												_mdgriffith$elm_style_animation$Style_Properties$Opacity(1)
-											]),
-										_mdgriffith$elm_style_animation$Style$animate))))));
-				var msg = _elm_lang$core$Native_Utils.update(
-					message,
-					{style: msgStyle});
+			case 'ShowMessage':
 				return {
 					ctor: '_Tuple2',
 					_0: _elm_lang$core$Native_Utils.update(
 						model,
 						{
-							message: _elm_lang$core$Maybe$Just(msg)
+							message: _elm_lang$core$Maybe$Just(_p0._0),
+							sheet: A2(_user$project$Animation$update, _user$project$Animation$ShowMessage, model.sheet)
 						}),
 					_1: _elm_lang$core$Platform_Cmd$none
 				};
 			default:
-				var _p1 = _p0._0;
 				return {
 					ctor: '_Tuple2',
 					_0: _elm_lang$core$Native_Utils.update(
 						model,
 						{
-							style: A2(_mdgriffith$elm_style_animation$Style$tick, _p1, model.style),
-							message: A2(
-								_elm_lang$core$Maybe$map,
-								function (msg) {
-									var newMsgStyle = A2(_mdgriffith$elm_style_animation$Style$tick, _p1, msg.style);
-									return _elm_lang$core$Native_Utils.update(
-										msg,
-										{style: newMsgStyle});
-								},
-								model.message),
-							submenus: A2(
-								_elm_lang$core$List$map,
-								function (submenu) {
-									var newStyle = A2(_mdgriffith$elm_style_animation$Style$tick, _p1, submenu.style);
-									return _elm_lang$core$Native_Utils.update(
-										submenu,
-										{style: newStyle});
-								},
-								model.submenus)
+							sheet: A2(_user$project$Animation$tick, _p0._0, model.sheet)
 						}),
 					_1: _elm_lang$core$Platform_Cmd$none
 				};
@@ -14426,65 +14504,82 @@ var _user$project$Main$update = F2(
 	});
 var _user$project$Main$Model = F4(
 	function (a, b, c, d) {
-		return {submenus: a, style: b, open: c, message: d};
+		return {submenus: a, open: b, message: c, sheet: d};
 	});
-var _user$project$Main$Submenu = F2(
-	function (a, b) {
-		return {style: a, icon: b};
-	});
-var _user$project$Main$Message = F2(
-	function (a, b) {
-		return {label: a, style: b};
-	});
+var _user$project$Main$Submenu = function (a) {
+	return {icon: a};
+};
 var _user$project$Main$Animate = function (a) {
 	return {ctor: 'Animate', _0: a};
 };
 var _user$project$Main$ShowMessage = function (a) {
 	return {ctor: 'ShowMessage', _0: a};
 };
-var _user$project$Main$viewSubmenu = function (submenu) {
-	return A2(
-		_elm_lang$html$Html$div,
-		_elm_lang$core$Native_List.fromArray(
-			[
-				_elm_lang$html$Html_Attributes$class('child-button'),
-				_elm_lang$html$Html_Attributes$style(
-				_mdgriffith$elm_style_animation$Style$render(submenu.style)),
-				_elm_lang$html$Html_Events$onClick(
-				_user$project$Main$ShowMessage(submenu.icon))
-			]),
-		_elm_lang$core$Native_List.fromArray(
-			[
-				A2(
-				_elm_lang$html$Html$i,
-				_elm_lang$core$Native_List.fromArray(
-					[
-						_elm_lang$html$Html_Attributes$class(
-						A2(_elm_lang$core$Basics_ops['++'], 'fa  fa-lg fa-', submenu.icon))
-					]),
-				_elm_lang$core$Native_List.fromArray(
-					[]))
-			]));
-};
-var _user$project$Main$Toggle = {ctor: 'Toggle'};
-var _user$project$Main$view = function (model) {
-	var submenus = A2(_elm_lang$core$List$map, _user$project$Main$viewSubmenu, model.submenus);
-	var message = A2(
-		_elm_lang$core$Maybe$withDefault,
-		A2(
+var _user$project$Main$viewSubmenu = F3(
+	function (sheet, id, submenu) {
+		return A2(
 			_elm_lang$html$Html$div,
 			_elm_lang$core$Native_List.fromArray(
-				[]),
+				[
+					_elm_lang$html$Html_Attributes$class('child-button'),
+					_elm_lang$html$Html_Attributes$style(
+					A2(
+						_user$project$Animation$render,
+						sheet,
+						_user$project$Animation$Submenu(id))),
+					_elm_lang$html$Html_Events$onClick(
+					_user$project$Main$ShowMessage(submenu.icon))
+				]),
 			_elm_lang$core$Native_List.fromArray(
-				[])),
-		A2(_elm_lang$core$Maybe$map, _user$project$Main$viewMessage, model.message));
+				[
+					A2(
+					_elm_lang$html$Html$i,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_elm_lang$html$Html_Attributes$class(
+							A2(_elm_lang$core$Basics_ops['++'], 'fa  fa-lg fa-', submenu.icon))
+						]),
+					_elm_lang$core$Native_List.fromArray(
+						[]))
+				]));
+	});
+var _user$project$Main$Toggle = {ctor: 'Toggle'};
+var _user$project$Main$view = function (model) {
+	var submenus = A2(
+		_elm_lang$core$List$indexedMap,
+		_user$project$Main$viewSubmenu(model.sheet),
+		model.submenus);
+	var message = function () {
+		var _p1 = model.message;
+		if (_p1.ctor === 'Nothing') {
+			return A2(
+				_elm_lang$html$Html$div,
+				_elm_lang$core$Native_List.fromArray(
+					[]),
+				_elm_lang$core$Native_List.fromArray(
+					[]));
+		} else {
+			return A2(
+				_elm_lang$html$Html$div,
+				_elm_lang$core$Native_List.fromArray(
+					[
+						_elm_lang$html$Html_Attributes$class('message'),
+						_elm_lang$html$Html_Attributes$style(
+						A2(_user$project$Animation$render, model.sheet, _user$project$Animation$Message))
+					]),
+				_elm_lang$core$Native_List.fromArray(
+					[
+						_elm_lang$html$Html$text(_p1._0)
+					]));
+		}
+	}();
 	var icon = A2(
 		_elm_lang$html$Html$i,
 		_elm_lang$core$Native_List.fromArray(
 			[
 				_elm_lang$html$Html_Attributes$class('fa fa-close fa-3x'),
 				_elm_lang$html$Html_Attributes$style(
-				_mdgriffith$elm_style_animation$Style$render(model.style))
+				A2(_user$project$Animation$render, model.sheet, _user$project$Animation$Menu))
 			]),
 		_elm_lang$core$Native_List.fromArray(
 			[]));

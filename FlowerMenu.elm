@@ -16,26 +16,19 @@ import Html.Events exposing (..)
 import AnimationFrame
 import Style
 import Style.Properties exposing (..)
-import Color exposing (black, rgb)
+import Animation
 
 
 type alias Model =
     { submenus : List Submenu
-    , style : Style.Animation
     , open : Bool
-    , message : Maybe Message
+    , message : Maybe String
+    , sheet : Animation.StyleSheet
     }
 
 
 type alias Submenu =
-    { style : Style.Animation
-    , icon : String
-    }
-
-
-type alias Message =
-    { label : String
-    , style : Style.Animation
+    { icon : String
     }
 
 
@@ -50,139 +43,30 @@ update message model =
     case message of
         Toggle ->
             if model.open then
-                let
-                    submenus =
-                        List.indexedMap
-                            (\i submenu ->
-                                { submenu
-                                    | style =
-                                        Style.animate
-                                            |> Style.delay (toFloat i * 5.0e-2 * second)
-                                            |> Style.spring
-                                                { stiffness = 400
-                                                , damping = 28
-                                                }
-                                            |> Style.to [ TranslateY 0 Px ]
-                                            |> Style.on submenu.style
-                                }
-                            )
-                            model.submenus
-                in
-                    ( { model
-                        | submenus = submenus
-                        , open = False
-                        , style =
-                            Style.animate
-                                |> Style.spring
-                                    { stiffness = 500
-                                    , damping = 30
-                                    }
-                                |> Style.to
-                                    [ Rotate -0.125 Turn
-                                    ]
-                                |> Style.on model.style
-                      }
-                    , Cmd.none
-                    )
-            else
-                let
-                    submenus =
-                        List.indexedMap
-                            (\i submenu ->
-                                { submenu
-                                    | style =
-                                        Style.animate
-                                            |> Style.delay (toFloat i * 2.5e-2 * second)
-                                            |> Style.spring
-                                                { stiffness = 400
-                                                , damping = 28
-                                                }
-                                            |> Style.to
-                                                [ TranslateY 100 Px
-                                                ]
-                                            |> Style.on submenu.style
-                                }
-                            )
-                            model.submenus
-
-                    parentStyle =
-                        Style.animate
-                            |> Style.spring
-                                { stiffness = 500
-                                , damping = 30
-                                }
-                            |> Style.to
-                                [ Rotate 0 Turn
-                                ]
-                            |> Style.on model.style
-                in
-                    ( { model
-                        | submenus = submenus
-                        , style = parentStyle
-                        , open = True
-                      }
-                    , Cmd.none
-                    )
-
-        ShowMessage str ->
-            let
-                message =
-                    { label = str
-                    , style =
-                        Style.init
-                            [ Display Block
-                            , Opacity 0
-                            ]
-                    }
-
-                msgStyle =
-                    Style.animate
-                        |> Style.to
-                            [ Opacity 1
-                            ]
-                        |> Style.andThen
-                        |> Style.to
-                            [ Opacity 0
-                            ]
-                        |> Style.andThen
-                        |> Style.set
-                            [ Display None
-                            ]
-                        |> Style.on message.style
-
-                msg =
-                    { message | style = msgStyle }
-            in
                 ( { model
-                    | message = Just msg
+                    | open = False
+                    , sheet = Animation.update Animation.Close model.sheet
+                  }
+                , Cmd.none
+                )
+            else
+                ( { model
+                    | open = True
+                    , sheet = Animation.update Animation.Open model.sheet
                   }
                 , Cmd.none
                 )
 
-        Animate time ->
+        ShowMessage str ->
             ( { model
-                | style = Style.tick time model.style
-                , message =
-                    Maybe.map
-                        (\msg ->
-                            let
-                                newMsgStyle =
-                                    Style.tick time msg.style
-                            in
-                                { msg | style = newMsgStyle }
-                        )
-                        model.message
-                , submenus =
-                    List.map
-                        (\submenu ->
-                            let
-                                newStyle =
-                                    Style.tick time submenu.style
-                            in
-                                { submenu | style = newStyle }
-                        )
-                        model.submenus
+                | message = Just str
+                , sheet = Animation.update Animation.ShowMessage model.sheet
               }
+            , Cmd.none
+            )
+
+        Animate time ->
+            ( { model | sheet = Animation.tick time model.sheet }
             , Cmd.none
             )
 
@@ -193,16 +77,24 @@ view model =
         icon =
             i
                 [ class "fa fa-close fa-3x"
-                , style (Style.render model.style)
+                , style (Animation.render model.sheet Animation.Menu)
                 ]
                 []
 
         message =
-            Maybe.withDefault (div [] [])
-                <| Maybe.map viewMessage model.message
+            case model.message of
+                Nothing ->
+                    div [] []
+
+                Just msg ->
+                    div
+                        [ class "message"
+                        , style (Animation.render model.sheet Animation.Message)
+                        ]
+                        [ text msg ]
 
         submenus =
-            List.map viewSubmenu model.submenus
+            List.indexedMap (viewSubmenu model.sheet) model.submenus
     in
         div
             [ class "main-button"
@@ -211,71 +103,28 @@ view model =
             (icon :: message :: submenus)
 
 
-viewSubmenu : Submenu -> Html Msg
-viewSubmenu submenu =
+viewSubmenu : Animation.StyleSheet -> Int -> Submenu -> Html Msg
+viewSubmenu sheet id submenu =
     div
         [ class "child-button"
-        , style (Style.render submenu.style)
+        , style (Animation.render sheet (Animation.Submenu id))
         , onClick (ShowMessage submenu.icon)
         ]
         [ i [ class ("fa  fa-lg fa-" ++ submenu.icon) ] []
         ]
 
 
-viewMessage : Message -> Html Msg
-viewMessage msg =
-    div
-        [ class "message"
-        , style (Style.render msg.style)
-        ]
-        [ text msg.label ]
-
-
-{-| In Turns
--}
-fanAngle : Float
-fanAngle =
-    0.11
-
-
-createSubmenu : String -> Int -> Int -> Submenu
-createSubmenu icon total i =
-    let
-        adjustment =
-            0.5 - (((toFloat total - 1) / 2.0) * fanAngle)
-
-        angle =
-            (toFloat i * fanAngle) + adjustment
-    in
-        { icon = icon
-        , style =
-            Style.init
-                [ Rotate angle Turn
-                , TranslateY 0 Px
-                , Rotate (-1 * angle) Turn
-                  -- Counter rotation so the icon is upright
-                ]
-        }
-
-
-iconCache : List String
-iconCache =
-    [ "pencil", "at", "camera", "bell", "comment", "bolt", "ban", "code" ]
-
-
 icons : List String
 icons =
-    List.take 5 iconCache
+    List.take 5 [ "pencil", "at", "camera", "bell", "comment", "bolt", "ban", "code" ]
 
 
 init =
     ( { open = False
       , submenus =
-            List.indexedMap (\i icon -> createSubmenu icon (List.length icons) i)
-                icons
-      , style =
-            Style.init [ Rotate -0.125 Turn ]
+            List.map (\icon -> { icon = icon }) icons
       , message = Nothing
+      , sheet = Animation.sheet (List.length icons)
       }
     , Cmd.none
     )
