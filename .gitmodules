@@ -1,0 +1,4 @@
+[submodule "lib"]
+	path = lib
+	url = https://github.com/mdgriffith/elm-style-animation.git
+	branch = forces-refactor

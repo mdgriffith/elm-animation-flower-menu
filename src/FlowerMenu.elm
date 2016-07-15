@@ -16,6 +16,7 @@ import Html.Events exposing (..)
 import AnimationFrame
 import Style
 import Style.Properties exposing (..)
+import Style.Sheet
 import Animation
 
 
@@ -23,7 +24,7 @@ type alias Model =
     { submenus : List Submenu
     , open : Bool
     , message : Maybe String
-    , sheet : Animation.StyleSheet
+    , sheet : Style.Sheet.Model Animation.Class
     }
 
 
@@ -45,14 +46,14 @@ update message model =
             if model.open then
                 ( { model
                     | open = False
-                    , sheet = Animation.update Animation.Close model.sheet
+                    , sheet = Style.Sheet.update Animation.close model.sheet
                   }
                 , Cmd.none
                 )
             else
                 ( { model
                     | open = True
-                    , sheet = Animation.update Animation.Open model.sheet
+                    , sheet = Style.Sheet.update Animation.open model.sheet
                   }
                 , Cmd.none
                 )
@@ -60,13 +61,13 @@ update message model =
         ShowMessage str ->
             ( { model
                 | message = Just str
-                , sheet = Animation.update Animation.ShowMessage model.sheet
+                , sheet = Style.Sheet.update Animation.showMsg model.sheet
               }
             , Cmd.none
             )
 
         Animate time ->
-            ( { model | sheet = Animation.tick time model.sheet }
+            ( { model | sheet = Style.Sheet.tick time model.sheet }
             , Cmd.none
             )
 
@@ -77,7 +78,7 @@ view model =
         icon =
             i
                 [ class "fa fa-close fa-3x"
-                , style (Animation.render model.sheet Animation.Menu)
+                , style (Style.Sheet.render model.sheet Animation.Menu)
                 ]
                 []
 
@@ -89,7 +90,7 @@ view model =
                 Just msg ->
                     div
                         [ class "message"
-                        , style (Animation.render model.sheet Animation.Message)
+                        , style (Style.Sheet.render model.sheet Animation.Message)
                         ]
                         [ text msg ]
 
@@ -103,11 +104,11 @@ view model =
             (icon :: message :: submenus)
 
 
-viewSubmenu : Animation.StyleSheet -> Int -> Submenu -> Html Msg
+viewSubmenu : Style.Sheet.Model Animation.Class -> Int -> Submenu -> Html Msg
 viewSubmenu sheet id submenu =
     div
         [ class "child-button"
-        , style (Animation.render sheet (Animation.Submenu id))
+        , style (Style.Sheet.render sheet (Animation.Submenu id))
         , onClick (ShowMessage submenu.icon)
         ]
         [ i [ class ("fa  fa-lg fa-" ++ submenu.icon) ] []
@@ -124,7 +125,12 @@ init =
       , submenus =
             List.map (\icon -> { icon = icon }) icons
       , message = Nothing
-      , sheet = Animation.sheet (List.length icons)
+      , sheet =
+            Animation.init <|
+                [ Animation.Menu
+                , Animation.Message
+                ]
+                    ++ List.map Animation.Submenu [0..List.length icons]
       }
     , Cmd.none
     )
