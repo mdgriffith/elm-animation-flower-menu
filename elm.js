@@ -5962,6 +5962,11 @@ function badOneOf(problems)
 	return { tag: 'oneOf', problems: problems };
 }
 
+function badCustom(msg)
+{
+	return { tag: 'custom', msg: msg };
+}
+
 function bad(msg)
 {
 	return { tag: 'fail', msg: msg };
@@ -5998,6 +6003,11 @@ function badToString(problem)
 				return 'I ran into the following problems'
 					+ (context === '_' ? '' : ' at ' + context)
 					+ ':\n\n' + problems.join('\n');
+
+			case 'custom':
+				return 'A `customDecode` failed'
+					+ (context === '_' ? '' : ' at ' + context)
+					+ ' with the message: ' + problem.msg;
 
 			case 'fail':
 				return 'I ran into a `fail` decoder'
@@ -6201,7 +6211,7 @@ function runHelp(decoder, value)
 			var realResult = decoder.callback(result.value);
 			if (realResult.ctor === 'Err')
 			{
-				return badPrimitive('something custom', value);
+				return badCustom(realResult._0);
 			}
 			return ok(realResult._0);
 
@@ -9283,6 +9293,11 @@ var _user$project$Style_Properties$Move = F2(
 	});
 
 var _user$project$Style_Spring$vTolerance = 0.1;
+var _user$project$Style_Spring$atRest = F2(
+	function (spring, physical) {
+		var velocityDelta = _elm_lang$core$Basics$abs(physical.velocity);
+		return _elm_lang$core$Native_Utils.cmp(velocityDelta, _user$project$Style_Spring$vTolerance) < 0;
+	});
 var _user$project$Style_Spring$tolerance = 1.0e-2;
 var _user$project$Style_Spring$update = F3(
 	function (dtms, spring, phys) {
@@ -9301,14 +9316,6 @@ var _user$project$Style_Spring$update = F3(
 			{position: spring.destination, velocity: 0.0}) : _elm_lang$core$Native_Utils.update(
 			phys,
 			{position: newX, velocity: newV});
-	});
-var _user$project$Style_Spring$atRest = F2(
-	function (spring, physical) {
-		return (_elm_lang$core$Native_Utils.cmp(
-			_elm_lang$core$Basics$abs(spring.destination - physical.position),
-			_user$project$Style_Spring$tolerance) < 0) && (_elm_lang$core$Native_Utils.cmp(
-			_elm_lang$core$Basics$abs(physical.velocity),
-			_user$project$Style_Spring$vTolerance) < 0);
 	});
 var _user$project$Style_Spring$duration = F2(
 	function (spring, phys) {
@@ -9331,6 +9338,10 @@ var _user$project$Style_Spring$duration = F2(
 var _user$project$Style_Spring$Model = F3(
 	function (a, b, c) {
 		return {stiffness: a, damping: b, destination: c};
+	});
+var _user$project$Style_Spring$Preset = F2(
+	function (a, b) {
+		return {stiffness: a, damping: b};
 	});
 var _user$project$Style_Spring$Physical = F3(
 	function (a, b, c) {
@@ -14521,6 +14532,14 @@ var _user$project$Style_PropertyHelpers$emptyEasing = {
 	counterForcePhys: _elm_lang$core$Maybe$Nothing,
 	duration: _user$project$Style_PropertyHelpers$defaultDuration
 };
+var _user$project$Style_PropertyHelpers$physicsInit = F2(
+	function (spring, x) {
+		return {
+			physical: {position: x, velocity: 0, mass: 1},
+			spring: spring,
+			easing: _elm_lang$core$Maybe$Nothing
+		};
+	});
 var _user$project$Style_PropertyHelpers$emptyPhysics = {
 	physical: {position: 0, velocity: 0, mass: 1},
 	spring: {stiffness: 170, damping: 26, destination: 1},
@@ -14539,30 +14558,51 @@ var _user$project$Style_PropertyHelpers$RGBA = F4(
 		return {ctor: 'RGBA', _0: a, _1: b, _2: c, _3: d};
 	});
 var _user$project$Style_PropertyHelpers$emptyDynamicColor = A4(_user$project$Style_PropertyHelpers$RGBA, _user$project$Style_PropertyHelpers$emptyPhysics, _user$project$Style_PropertyHelpers$emptyPhysics, _user$project$Style_PropertyHelpers$emptyPhysics, _user$project$Style_PropertyHelpers$emptyPhysics);
-var _user$project$Style_PropertyHelpers$toDynamic = function (prop) {
-	return A3(
-		_user$project$Style_PropertyHelpers$map,
-		function (_p439) {
-			return _user$project$Style_PropertyHelpers$emptyPhysics;
-		},
-		function (_p440) {
-			return _user$project$Style_PropertyHelpers$emptyDynamicColor;
-		},
-		prop);
-};
+var _user$project$Style_PropertyHelpers$initDynamicColor = F2(
+	function (spring, color) {
+		var _p439 = _elm_lang$core$Color$toRgb(color);
+		var red = _p439.red;
+		var blue = _p439.blue;
+		var green = _p439.green;
+		var alpha = _p439.alpha;
+		return A4(
+			_user$project$Style_PropertyHelpers$RGBA,
+			A2(
+				_user$project$Style_PropertyHelpers$physicsInit,
+				spring,
+				_elm_lang$core$Basics$toFloat(red)),
+			A2(
+				_user$project$Style_PropertyHelpers$physicsInit,
+				spring,
+				_elm_lang$core$Basics$toFloat(blue)),
+			A2(
+				_user$project$Style_PropertyHelpers$physicsInit,
+				spring,
+				_elm_lang$core$Basics$toFloat(green)),
+			A2(_user$project$Style_PropertyHelpers$physicsInit, spring, alpha));
+	});
+var _user$project$Style_PropertyHelpers$toDynamic = F2(
+	function (spring, prop) {
+		var springModel = {destination: 1, stiffness: spring.stiffness, damping: spring.damping};
+		return A3(
+			_user$project$Style_PropertyHelpers$map,
+			_user$project$Style_PropertyHelpers$physicsInit(springModel),
+			_user$project$Style_PropertyHelpers$initDynamicColor(springModel),
+			prop);
+	});
 var _user$project$Style_PropertyHelpers$update = F2(
 	function (fn, prop) {
 		return A3(
 			_user$project$Style_PropertyHelpers$map,
 			fn,
 			function (dynamicColor) {
-				var _p441 = dynamicColor;
+				var _p440 = dynamicColor;
 				return A4(
 					_user$project$Style_PropertyHelpers$RGBA,
-					fn(_p441._0),
-					fn(_p441._1),
-					fn(_p441._2),
-					fn(_p441._3));
+					fn(_p440._0),
+					fn(_p440._1),
+					fn(_p440._2),
+					fn(_p440._3));
 			},
 			prop);
 	});
@@ -14573,14 +14613,14 @@ var _user$project$Style_PropertyHelpers$updateFrom = F3(
 			fn,
 			F2(
 				function (prevDColor, currentDColor) {
-					var _p442 = prevDColor;
-					var _p443 = currentDColor;
+					var _p441 = prevDColor;
+					var _p442 = currentDColor;
 					return A4(
 						_user$project$Style_PropertyHelpers$RGBA,
-						A2(fn, _p442._0, _p443._0),
-						A2(fn, _p442._1, _p443._1),
-						A2(fn, _p442._2, _p443._2),
-						A2(fn, _p442._3, _p443._3));
+						A2(fn, _p441._0, _p442._0),
+						A2(fn, _p441._1, _p442._1),
+						A2(fn, _p441._2, _p442._2),
+						A2(fn, _p441._3, _p442._3));
 				}),
 			prev,
 			prop);
@@ -14594,25 +14634,25 @@ var _user$project$Style_PropertyHelpers$updateOver = F4(
 				function (targetColor, prevColor, currentDColor) {
 					var p = _elm_lang$core$Color$toRgb(prevColor);
 					var t = _elm_lang$core$Color$toRgb(targetColor);
-					var _p444 = currentDColor;
+					var _p443 = currentDColor;
 					return A4(
 						_user$project$Style_PropertyHelpers$RGBA,
 						A3(
 							fn,
 							_elm_lang$core$Basics$toFloat(t.red),
 							_elm_lang$core$Basics$toFloat(p.red),
-							_p444._0),
+							_p443._0),
 						A3(
 							fn,
 							_elm_lang$core$Basics$toFloat(t.green),
 							_elm_lang$core$Basics$toFloat(p.green),
-							_p444._1),
+							_p443._1),
 						A3(
 							fn,
 							_elm_lang$core$Basics$toFloat(t.blue),
 							_elm_lang$core$Basics$toFloat(p.blue),
-							_p444._2),
-						A3(fn, t.alpha, p.alpha, _p444._3));
+							_p443._2),
+						A3(fn, t.alpha, p.alpha, _p443._3));
 				}),
 			target,
 			prev,
@@ -14628,7 +14668,15 @@ var _user$project$Style_Spring_Presets$SpringProps = F2(
 		return {stiffness: a, damping: b};
 	});
 
-var _user$project$Style_Core$zipWith = F3(
+var _user$project$Style_Collection$mapTo = F3(
+	function (i, fn, xs) {
+		var update = F2(
+			function (j, x) {
+				return _elm_lang$core$Native_Utils.eq(j, i) ? fn(x) : x;
+			});
+		return A2(_elm_lang$core$List$indexedMap, update, xs);
+	});
+var _user$project$Style_Collection$zipWith = F3(
 	function (fn, listA, listB) {
 		return _elm_lang$core$Basics$fst(
 			A3(
@@ -14670,7 +14718,7 @@ var _user$project$Style_Core$zipWith = F3(
 				},
 				listA));
 	});
-var _user$project$Style_Core$fill = F2(
+var _user$project$Style_Collection$fill = F2(
 	function (existing, $new) {
 		return A2(
 			_elm_lang$core$List$map,
@@ -14679,7 +14727,7 @@ var _user$project$Style_Core$fill = F2(
 				return A2(_elm_lang$core$Maybe$withDefault, _p4._0, _p4._1);
 			},
 			A3(
-				_user$project$Style_Core$zipWith,
+				_user$project$Style_Collection$zipWith,
 				F2(
 					function (a, b) {
 						return _elm_lang$core$Native_Utils.eq(
@@ -14689,540 +14737,471 @@ var _user$project$Style_Core$fill = F2(
 				existing,
 				$new));
 	});
-var _user$project$Style_Core$bake = F2(
-	function (frame, style) {
+var _user$project$Style_Collection$bake = F2(
+	function (dynamic, style) {
 		return A2(
-			_user$project$Style_Core$fill,
+			_user$project$Style_Collection$fill,
 			style,
-			A2(
-				_elm_lang$core$List$map,
-				function (prop) {
-					return _user$project$Style_PropertyHelpers$toStatic(prop.current);
-				},
-				frame.properties));
+			A2(_elm_lang$core$List$map, _user$project$Style_PropertyHelpers$toStatic, dynamic));
 	});
-var _user$project$Style_Core$mapTo = F3(
-	function (i, fn, xs) {
-		var update = F2(
-			function (j, x) {
-				return _elm_lang$core$Native_Utils.eq(j, i) ? fn(x) : x;
-			});
-		return A2(_elm_lang$core$List$indexedMap, update, xs);
-	});
-var _user$project$Style_Core$velocity = F3(
-	function (oldPos, newPos, dt) {
-		return (newPos - oldPos) / dt;
-	});
-var _user$project$Style_Core$applyStep = F5(
-	function (current, dt, target, from, physics) {
-		var _p5 = physics.easing;
-		if (_p5.ctor === 'Nothing') {
-			var newSpring = physics.spring;
-			var targeted = _elm_lang$core$Native_Utils.update(
-				newSpring,
-				{destination: target});
-			var positioned = (_elm_lang$core$Native_Utils.eq(current, 0.0) && _elm_lang$core$Native_Utils.eq(dt, 0.0)) ? {position: from, velocity: physics.physical.velocity, mass: 1} : physics.physical;
-			var finalPhysical = A3(_user$project$Style_Spring$update, dt, targeted, positioned);
-			return _elm_lang$core$Native_Utils.update(
-				physics,
-				{physical: finalPhysical, spring: targeted});
-		} else {
-			var _p7 = _p5._0;
-			var counterSpring = function () {
-				var _p6 = _p7.counterForcePhys;
-				if (_p6.ctor === 'Nothing') {
-					return _elm_lang$core$Maybe$Just(_p7);
-				} else {
-					var newCounterSpring = A3(_user$project$Style_Spring$update, dt, _p7.counterForce, _p6._0);
-					return A2(_user$project$Style_Spring$atRest, _p7.counterForce, newCounterSpring) ? _elm_lang$core$Maybe$Just(
-						_elm_lang$core$Native_Utils.update(
-							_p7,
-							{counterForcePhys: _elm_lang$core$Maybe$Nothing})) : _elm_lang$core$Maybe$Just(
-						_elm_lang$core$Native_Utils.update(
-							_p7,
-							{
-								counterForcePhys: _elm_lang$core$Maybe$Just(newCounterSpring)
-							}));
-				}
-			}();
-			var physical = physics.physical;
-			var eased = (_elm_lang$core$Native_Utils.cmp(_p7.duration, 0) < 1) ? 1.0 : ((_elm_lang$core$Native_Utils.cmp(current, _p7.duration) > 0) ? 1.0 : _p7.ease(current / _p7.duration));
-			var currentPos = ((target - from) * eased) + from;
-			var finalPhysical = _elm_lang$core$Native_Utils.update(
-				physical,
-				{
-					position: currentPos,
-					velocity: A3(_user$project$Style_Core$velocity, physics.physical.position, currentPos, dt)
-				});
-			return _elm_lang$core$Native_Utils.update(
-				physics,
-				{physical: finalPhysical, easing: counterSpring});
-		}
-	});
-var _user$project$Style_Core$step = F4(
-	function (time, dt, style, frame) {
-		var newProperties = A2(
-			_elm_lang$core$List$map,
-			function (_p8) {
-				var _p9 = _p8;
-				var _p11 = _p9._0;
-				var _p10 = _p9._1;
-				if (_p10.ctor === 'Nothing') {
-					return _p11;
-				} else {
-					return _elm_lang$core$Native_Utils.update(
-						_p11,
-						{
-							current: A4(
-								_user$project$Style_PropertyHelpers$updateOver,
-								A2(_user$project$Style_Core$applyStep, time, dt),
-								_p11.target,
-								_p10._0,
-								_p11.current)
-						});
-				}
-			},
-			A3(
-				_user$project$Style_Core$zipWith,
-				F2(
-					function (a, b) {
-						return _elm_lang$core$Native_Utils.eq(
-							_user$project$Style_PropertyHelpers$id(a.current),
-							_user$project$Style_PropertyHelpers$id(b));
-					}),
-				frame.properties,
-				style));
-		return _elm_lang$core$Native_Utils.update(
-			frame,
-			{properties: newProperties});
-	});
-var _user$project$Style_Core$transferVelocityProp = F2(
-	function (old, target) {
-		var newPhys = target.physical;
-		var newV = _elm_lang$core$Native_Utils.update(
-			newPhys,
-			{velocity: old.physical.velocity});
-		var _p12 = target.easing;
-		if (_p12.ctor === 'Nothing') {
-			return _elm_lang$core$Native_Utils.update(
-				target,
-				{physical: newV});
-		} else {
-			var _p13 = _p12._0;
-			var sampleSize = 16.0;
-			var eased = (_elm_lang$core$Native_Utils.cmp(_p13.duration, 0) < 1) ? 1.0 : _p13.ease(sampleSize / _p13.duration);
-			var easeV = A3(_user$project$Style_Core$velocity, 0, eased, sampleSize);
-			var deltaV = old.physical.velocity - easeV;
-			var newEasing = _elm_lang$core$Maybe$Just(
-				_elm_lang$core$Native_Utils.update(
-					_p13,
-					{
-						counterForcePhys: _elm_lang$core$Maybe$Just(
-							{position: 0, velocity: deltaV, mass: 1})
-					}));
-			return _elm_lang$core$Native_Utils.update(
-				target,
-				{easing: newEasing, physical: newV});
-		}
-	});
-var _user$project$Style_Core$transferVelocity = F2(
-	function (old, $new) {
-		var matched = A3(
-			_user$project$Style_Core$zipWith,
-			F2(
-				function (a, b) {
-					return _elm_lang$core$Native_Utils.eq(
-						_user$project$Style_PropertyHelpers$id(a.current),
-						_user$project$Style_PropertyHelpers$id(b.current));
-				}),
-			old.properties,
-			$new.properties);
-		var newProperties = A2(
-			_elm_lang$core$List$map,
-			function (_p14) {
-				var _p15 = _p14;
-				var _p18 = _p15._0;
-				var _p16 = _p15._1;
-				if (_p16.ctor === 'Nothing') {
-					return _p18;
-				} else {
-					var _p17 = _p16._0;
-					var newCurrent = A3(_user$project$Style_PropertyHelpers$updateFrom, _user$project$Style_Core$transferVelocityProp, _p18.current, _p17.current);
-					return _elm_lang$core$Native_Utils.update(
-						_p17,
-						{current: newCurrent});
-				}
-			},
-			matched);
-		return _elm_lang$core$Native_Utils.update(
-			$new,
-			{properties: newProperties});
-	});
-var _user$project$Style_Core$done = F2(
-	function (time, frame) {
-		var finished = function (prop) {
-			var _p19 = prop.easing;
-			if (_p19.ctor === 'Nothing') {
-				return A2(_user$project$Style_Spring$atRest, prop.spring, prop.physical);
-			} else {
-				var _p20 = _p19._0;
-				return (_elm_lang$core$Native_Utils.cmp(time, _p20.duration) > -1) && _elm_lang$core$Native_Utils.eq(_p20.counterForcePhys, _elm_lang$core$Maybe$Nothing);
-			}
-		};
-		return A2(
-			_elm_lang$core$List$all,
-			function (p) {
-				return A2(_user$project$Style_PropertyHelpers$is, finished, p.current);
-			},
-			frame.properties);
-	});
-var _user$project$Style_Core$matchPoints = F2(
-	function (frame, lastTargetStyle) {
+var _user$project$Style_Collection$amend = F2(
+	function (style, dynamic) {
 		var paired = A3(
-			_user$project$Style_Core$zipWith,
+			_user$project$Style_Collection$zipWith,
 			F2(
 				function (a, b) {
 					return _elm_lang$core$Native_Utils.eq(
-						_user$project$Style_PropertyHelpers$id(a.target),
+						_user$project$Style_PropertyHelpers$id(a),
 						_user$project$Style_PropertyHelpers$id(b));
 				}),
-			frame.properties,
-			lastTargetStyle);
-		return _elm_lang$core$Native_Utils.update(
-			frame,
-			{
-				properties: A2(
-					_elm_lang$core$List$map,
-					function (_p21) {
-						var _p22 = _p21;
-						var _p25 = _p22._0;
-						var _p23 = _p22._1;
-						if (_p23.ctor === 'Nothing') {
-							return _p25;
-						} else {
-							var _p24 = _p23._0;
-							return _elm_lang$core$Native_Utils.update(
-								_p25,
-								{
-									target: A2(_user$project$Style_PropertyHelpers$matchPoints, _p25.target, _p24),
-									current: A2(_user$project$Style_PropertyHelpers$matchPoints, _p25.current, _p24)
-								});
-						}
-					},
-					paired)
-			});
-	});
-var _user$project$Style_Core$getPropCount = F2(
-	function (x, list) {
-		return A3(
-			_elm_lang$core$List$foldl,
-			F2(
-				function (y, acc) {
-					return _elm_lang$core$Native_Utils.eq(
-						_user$project$Style_PropertyHelpers$id(x),
-						_user$project$Style_PropertyHelpers$id(y)) ? (acc + 1) : acc;
-				}),
-			1,
-			list);
-	});
-var _user$project$Style_Core$mapWithCount = F2(
-	function (fn, list) {
-		var mapped = A3(
-			_elm_lang$core$List$foldl,
-			F2(
-				function (x, acc) {
-					var count = A2(
-						_user$project$Style_Core$getPropCount,
-						_elm_lang$core$Basics$snd(x),
-						acc.past);
-					return {
-						current: A2(
-							_elm_lang$core$Basics_ops['++'],
-							acc.current,
-							_elm_lang$core$Native_List.fromArray(
-								[
-									A2(fn, count, x)
-								])),
-						past: A2(
-							_elm_lang$core$Basics_ops['++'],
-							acc.past,
-							_elm_lang$core$Native_List.fromArray(
-								[
-									_elm_lang$core$Basics$snd(x)
-								]))
-					};
-				}),
-			{
-				current: _elm_lang$core$Native_List.fromArray(
-					[]),
-				past: _elm_lang$core$Native_List.fromArray(
-					[])
+			style,
+			dynamic);
+		return A2(
+			_elm_lang$core$List$map,
+			function (_p5) {
+				var _p6 = _p5;
+				var _p8 = _p6._0;
+				var _p7 = _p6._1;
+				if (_p7.ctor === 'Nothing') {
+					return _p8;
+				} else {
+					return A2(_user$project$Style_PropertyHelpers$matchPoints, _p8, _p7._0);
+				}
 			},
-			list);
-		return mapped.current;
+			paired);
 	});
-var _user$project$Style_Core$retargetIfNecessary = F2(
-	function (frame, lastTargetStyle) {
-		var _p26 = frame.retarget;
-		if (_p26.ctor === 'Nothing') {
-			return frame;
-		} else {
-			var possiblePairs = A3(
-				_user$project$Style_Core$zipWith,
-				F2(
-					function (a, b) {
-						return _elm_lang$core$Native_Utils.eq(
-							_user$project$Style_PropertyHelpers$id(a.target),
-							_user$project$Style_PropertyHelpers$id(b));
-					}),
-				frame.properties,
-				lastTargetStyle);
-			var pairs = A2(
-				_elm_lang$core$List$filterMap,
-				function (_p27) {
-					var _p28 = _p27;
-					var _p29 = _p28._1;
-					if (_p29.ctor === 'Nothing') {
-						return _elm_lang$core$Maybe$Nothing;
-					} else {
-						return _elm_lang$core$Maybe$Just(
-							{ctor: '_Tuple2', _0: _p28._0, _1: _p29._0});
-					}
-				},
-				possiblePairs);
-			return _elm_lang$core$Native_Utils.update(
-				frame,
-				{
-					properties: A2(
-						_user$project$Style_Core$mapWithCount,
-						F2(
-							function (i, _p30) {
-								var _p31 = _p30;
-								return _elm_lang$core$Native_Utils.update(
-									_p31._0,
-									{
-										target: A2(_p26._0, i, _p31._1)
-									});
-							}),
-						pairs)
-				});
-		}
-	});
-var _user$project$Style_Core$initializeFrame = F3(
-	function (style, prevTargetStyle, frame) {
-		var retargeted = A2(_user$project$Style_Core$retargetIfNecessary, frame, prevTargetStyle);
+var _user$project$Style_Collection$warnings = F2(
+	function (style, target) {
 		var matched = A3(
-			_user$project$Style_Core$zipWith,
+			_user$project$Style_Collection$zipWith,
 			F2(
 				function (a, b) {
 					return _elm_lang$core$Native_Utils.eq(
-						_user$project$Style_PropertyHelpers$baseName(a.current),
+						_user$project$Style_PropertyHelpers$baseName(a),
 						_user$project$Style_PropertyHelpers$baseName(b));
 				}),
-			frame.properties,
+			target,
 			style);
-		var warnings = A2(
-			_elm_lang$core$List$map,
-			function (_p32) {
-				var _p33 = _p32;
-				var _p36 = _p33._0;
-				var _p34 = _p33._1;
-				if (_p34.ctor === 'Nothing') {
-					var warn = A2(
-						_elm_lang$core$Debug$log,
-						'elm-style-animation',
+		return A2(
+			_elm_lang$core$List$filterMap,
+			function (_p9) {
+				var _p10 = _p9;
+				var _p13 = _p10._0;
+				var _p11 = _p10._1;
+				if (_p11.ctor === 'Nothing') {
+					return _elm_lang$core$Maybe$Just(
 						A2(
 							_elm_lang$core$Basics_ops['++'],
 							'There is no initial value for \'',
 							A2(
 								_elm_lang$core$Basics_ops['++'],
-								_user$project$Style_PropertyHelpers$id(_p36.current),
+								_user$project$Style_PropertyHelpers$id(_p13),
 								A2(
 									_elm_lang$core$Basics_ops['++'],
 									'\', though it is queued to be animated.  Define an initial value for \'',
 									A2(
 										_elm_lang$core$Basics_ops['++'],
-										_user$project$Style_PropertyHelpers$id(_p36.current),
+										_user$project$Style_PropertyHelpers$id(_p13),
 										'\'')))));
-					return _elm_lang$core$Maybe$Just(warn);
 				} else {
-					var _p35 = _p34._0;
-					if (_elm_lang$core$Native_Utils.eq(
-						_user$project$Style_PropertyHelpers$id(_p36.current),
-						_user$project$Style_PropertyHelpers$id(_p35))) {
-						return _elm_lang$core$Maybe$Nothing;
-					} else {
-						var warn = A2(
-							_elm_lang$core$Debug$log,
-							'elm-style-animation',
+					var _p12 = _p11._0;
+					return _elm_lang$core$Native_Utils.eq(
+						_user$project$Style_PropertyHelpers$id(_p13),
+						_user$project$Style_PropertyHelpers$id(_p12)) ? _elm_lang$core$Maybe$Nothing : _elm_lang$core$Maybe$Just(
+						A2(
+							_elm_lang$core$Basics_ops['++'],
+							'Wrong units provided.  ',
 							A2(
 								_elm_lang$core$Basics_ops['++'],
-								'Wrong units provided.  ',
+								'An initial value was given as \'',
 								A2(
 									_elm_lang$core$Basics_ops['++'],
-									'An initial value was given as \'',
+									_user$project$Style_PropertyHelpers$id(_p12),
 									A2(
 										_elm_lang$core$Basics_ops['++'],
-										_user$project$Style_PropertyHelpers$id(_p35),
+										'\' versus the animation which was given as \'',
 										A2(
 											_elm_lang$core$Basics_ops['++'],
-											'\' versus the animation which was given as \'',
-											A2(
-												_elm_lang$core$Basics_ops['++'],
-												_user$project$Style_PropertyHelpers$id(_p36.current),
-												'\'.'))))));
-						return _elm_lang$core$Maybe$Just(warn);
-					}
+											_user$project$Style_PropertyHelpers$id(_p13),
+											'\'.'))))));
 				}
 			},
 			matched);
-		return A4(
-			_user$project$Style_Core$step,
-			0.0,
-			0.0,
-			style,
-			A2(_user$project$Style_Core$matchPoints, retargeted, prevTargetStyle));
 	});
-var _user$project$Style_Core$amend = F2(
-	function (style, frame) {
-		var paired = A3(
-			_user$project$Style_Core$zipWith,
+var _user$project$Style_Collection$zipWith3 = F4(
+	function (fn, listA, listB, listC) {
+		var _p14 = A3(
+			_elm_lang$core$List$foldl,
+			F2(
+				function (a, _p15) {
+					var _p16 = _p15;
+					var _p17 = A2(
+						_elm_lang$core$List$partition,
+						function (c) {
+							return A2(fn, a, c);
+						},
+						_p16._2);
+					var matchingC = _p17._0;
+					var unmatchingC = _p17._1;
+					var remainingC = A2(
+						_elm_lang$core$Maybe$withDefault,
+						_elm_lang$core$Native_List.fromArray(
+							[]),
+						_elm_lang$core$List$tail(matchingC));
+					var _p18 = A2(
+						_elm_lang$core$List$partition,
+						function (b) {
+							return A2(fn, a, b);
+						},
+						_p16._1);
+					var matchingB = _p18._0;
+					var unmatchingB = _p18._1;
+					var remainingB = A2(
+						_elm_lang$core$Maybe$withDefault,
+						_elm_lang$core$Native_List.fromArray(
+							[]),
+						_elm_lang$core$List$tail(matchingB));
+					return {
+						ctor: '_Tuple3',
+						_0: A2(
+							_elm_lang$core$Basics_ops['++'],
+							_p16._0,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									{
+									ctor: '_Tuple3',
+									_0: a,
+									_1: _elm_lang$core$List$head(matchingB),
+									_2: _elm_lang$core$List$head(matchingC)
+								}
+								])),
+						_1: A2(_elm_lang$core$Basics_ops['++'], unmatchingB, remainingB),
+						_2: A2(_elm_lang$core$Basics_ops['++'], unmatchingC, remainingC)
+					};
+				}),
+			{
+				ctor: '_Tuple3',
+				_0: _elm_lang$core$Native_List.fromArray(
+					[]),
+				_1: listB,
+				_2: listC
+			},
+			listA);
+		var results = _p14._0;
+		return results;
+	});
+var _user$project$Style_Collection$map3 = F4(
+	function (fn, prev, target, current) {
+		var matched = A4(
+			_user$project$Style_Collection$zipWith3,
 			F2(
 				function (a, b) {
 					return _elm_lang$core$Native_Utils.eq(
 						_user$project$Style_PropertyHelpers$id(a),
-						_user$project$Style_PropertyHelpers$id(b.target));
+						_user$project$Style_PropertyHelpers$id(b));
 				}),
-			style,
-			frame.properties);
+			current,
+			prev,
+			target);
 		return A2(
 			_elm_lang$core$List$map,
-			function (_p37) {
-				var _p38 = _p37;
-				var _p40 = _p38._0;
-				var _p39 = _p38._1;
-				if (_p39.ctor === 'Nothing') {
-					return _p40;
+			function (_p19) {
+				var _p20 = _p19;
+				var _p23 = _p20._0;
+				var _p21 = _p20._1;
+				if (_p21.ctor === 'Nothing') {
+					return _p23;
 				} else {
-					return A2(_user$project$Style_PropertyHelpers$matchPoints, _p40, _p39._0.target);
+					var _p22 = _p20._2;
+					if (_p22.ctor === 'Nothing') {
+						return _p23;
+					} else {
+						return A4(_user$project$Style_PropertyHelpers$updateOver, fn, _p21._0, _p22._0, _p23);
+					}
 				}
 			},
-			paired);
+			matched);
 	});
-var _user$project$Style_Core$getTarget = function (frame) {
+var _user$project$Style_Collection$apply = F2(
+	function (retarget, style) {
+		var matched = A3(
+			_user$project$Style_Collection$zipWith,
+			F2(
+				function (a, b) {
+					return _elm_lang$core$Native_Utils.eq(
+						_user$project$Style_PropertyHelpers$id(a),
+						_user$project$Style_PropertyHelpers$id(b));
+				}),
+			retarget,
+			style);
+		return A2(
+			_elm_lang$core$List$filterMap,
+			function (_p24) {
+				var _p25 = _p24;
+				return A2(
+					_elm_lang$core$Maybe$map,
+					_user$project$Style_PropertyHelpers$apply(_p25._0),
+					_p25._1);
+			},
+			matched);
+	});
+var _user$project$Style_Collection$map2 = F3(
+	function (fn, style, dyn) {
+		var colorFn = F2(
+			function (prevColor, currentDColor) {
+				var _p26 = _elm_lang$core$Color$toRgb(prevColor);
+				var red = _p26.red;
+				var blue = _p26.blue;
+				var green = _p26.green;
+				var alpha = _p26.alpha;
+				var _p27 = currentDColor;
+				return A4(
+					_user$project$Style_PropertyHelpers$RGBA,
+					A2(
+						fn,
+						_elm_lang$core$Basics$toFloat(red),
+						_p27._0),
+					A2(
+						fn,
+						_elm_lang$core$Basics$toFloat(green),
+						_p27._1),
+					A2(
+						fn,
+						_elm_lang$core$Basics$toFloat(blue),
+						_p27._2),
+					A2(fn, alpha, _p27._3));
+			});
+		var matched = A3(
+			_user$project$Style_Collection$zipWith,
+			F2(
+				function (a, b) {
+					return _elm_lang$core$Native_Utils.eq(
+						_user$project$Style_PropertyHelpers$id(a),
+						_user$project$Style_PropertyHelpers$id(b));
+				}),
+			dyn,
+			style);
+		return A2(
+			_elm_lang$core$List$filterMap,
+			function (_p28) {
+				var _p29 = _p28;
+				return A2(
+					_elm_lang$core$Maybe$map,
+					function (target) {
+						return A4(_user$project$Style_PropertyHelpers$map2, fn, colorFn, target, _p29._0);
+					},
+					_p29._1);
+			},
+			matched);
+	});
+
+var _user$project$Style_Core$setStep = F4(
+	function (model, from, target, physics) {
+		return _elm_lang$core$Native_Utils.update(
+			physics,
+			{
+				physical: {position: target, velocity: 0, mass: physics.physical.mass}
+			});
+	});
+var _user$project$Style_Core$isDone = function (style) {
+	var finished = function (prop) {
+		return A2(_user$project$Style_Spring$atRest, prop.spring, prop.physical);
+	};
 	return A2(
-		_elm_lang$core$List$map,
+		_elm_lang$core$List$all,
 		function (prop) {
-			return prop.target;
+			return A2(_user$project$Style_PropertyHelpers$is, finished, prop);
 		},
-		frame.properties);
+		style);
 };
-var _user$project$Style_Core$interrupt = F4(
-	function (now, model, interruption, remaining) {
-		var _p41 = function () {
-			var _p42 = _elm_lang$core$List$head(model.frames);
-			if (_p42.ctor === 'Nothing') {
-				return {ctor: '_Tuple3', _0: model.previous, _1: model.previous, _2: interruption};
-			} else {
-				var _p43 = _p42._0;
-				return {
-					ctor: '_Tuple3',
-					_0: A2(_user$project$Style_Core$bake, _p43, model.previous),
-					_1: _user$project$Style_Core$getTarget(_p43),
-					_2: A3(
-						_user$project$Style_Core$mapTo,
-						0,
-						function (newFrame) {
-							return A2(_user$project$Style_Core$transferVelocity, _p43, newFrame);
-						},
-						interruption)
-				};
-			}
-		}();
-		var previous = _p41._0;
-		var prevTarget = _p41._1;
-		var newFrames = _p41._2;
-		var amended = function () {
-			var _p44 = _elm_lang$core$List$head(newFrames);
-			if (_p44.ctor === 'Nothing') {
-				return previous;
-			} else {
-				return A2(_user$project$Style_Core$amend, previous, _p44._0);
-			}
-		}();
-		var amendedTarget = function () {
-			var _p45 = _elm_lang$core$List$head(newFrames);
-			if (_p45.ctor === 'Nothing') {
-				return prevTarget;
-			} else {
-				return A2(_user$project$Style_Core$amend, prevTarget, _p45._0);
-			}
-		}();
+var _user$project$Style_Core$setStart = F2(
+	function (start, model) {
+		var times = model.times;
+		var restarted = _elm_lang$core$Native_Utils.update(
+			times,
+			{start: start});
 		return _elm_lang$core$Native_Utils.update(
 			model,
-			{
-				frames: A3(
-					_user$project$Style_Core$mapTo,
-					0,
-					A2(_user$project$Style_Core$initializeFrame, amended, amendedTarget),
-					newFrames),
-				elapsed: 0.0,
-				start: _elm_lang$core$Maybe$Nothing,
-				previous: amended,
-				interruption: remaining
-			});
+			{times: restarted});
 	});
-var _user$project$Style_Core$getTimes = F2(
+var _user$project$Style_Core$setTimes = F2(
 	function (now, model) {
-		var prelimStart = function () {
-			var _p46 = model.start;
-			if (_p46.ctor === 'Nothing') {
-				return now;
-			} else {
-				return _p46._0;
-			}
-		}();
-		var prelimElapsed = now - prelimStart;
-		var prelimDt = prelimElapsed - model.elapsed;
-		return (_elm_lang$core$Native_Utils.cmp(prelimDt, 300) > 0) ? {ctor: '_Tuple3', _0: now - model.elapsed, _1: model.elapsed, _2: 0} : {ctor: '_Tuple3', _0: prelimStart, _1: prelimElapsed, _2: prelimDt};
+		var dt = now - model.times.current;
+		var newTimes = {
+			current: now,
+			dt: (_elm_lang$core$Native_Utils.cmp(dt, 300) > 0) ? 0.0 : dt,
+			start: model.times.start
+		};
+		return _elm_lang$core$Native_Utils.update(
+			model,
+			{times: newTimes});
 	});
-var _user$project$Style_Core$continue = F3(
-	function (model, elapsed, start) {
+var _user$project$Style_Core$applyNudges = function (model) {
+	return _elm_lang$core$Native_Utils.update(
+		model,
+		{
+			nudges: _elm_lang$core$Native_List.fromArray(
+				[]),
+			current: A3(
+				_elm_lang$core$List$foldl,
+				F2(
+					function (nudge, current) {
+						return A3(
+							_user$project$Style_Collection$map2,
+							F2(
+								function (x, phys) {
+									var physical = phys.physical;
+									var newVelocity = _elm_lang$core$Native_Utils.update(
+										physical,
+										{velocity: physical.velocity + x});
+									return _elm_lang$core$Native_Utils.update(
+										phys,
+										{physical: newVelocity});
+								}),
+							nudge,
+							current);
+					}),
+				model.current,
+				model.nudges)
+		});
+};
+var _user$project$Style_Core$dropWhile = F2(
+	function (predicate, list) {
+		dropWhile:
+		while (true) {
+			var _p0 = list;
+			if (_p0.ctor === '[]') {
+				return _elm_lang$core$Native_List.fromArray(
+					[]);
+			} else {
+				if (predicate(_p0._0)) {
+					var _v1 = predicate,
+						_v2 = _p0._1;
+					predicate = _v1;
+					list = _v2;
+					continue dropWhile;
+				} else {
+					return list;
+				}
+			}
+		}
+	});
+var _user$project$Style_Core$takeWhile = F2(
+	function (predicate, list) {
+		var _p1 = list;
+		if (_p1.ctor === '[]') {
+			return _elm_lang$core$Native_List.fromArray(
+				[]);
+		} else {
+			var _p2 = _p1._0;
+			return predicate(_p2) ? A2(
+				_elm_lang$core$List_ops['::'],
+				_p2,
+				A2(_user$project$Style_Core$takeWhile, predicate, _p1._1)) : _elm_lang$core$Native_List.fromArray(
+				[]);
+		}
+	});
+var _user$project$Style_Core$getMessages = function (model) {
+	var extractMsg = function (frame) {
+		var _p3 = frame;
+		if (_p3.ctor === 'Send') {
+			return _elm_lang$core$Maybe$Just(_p3._0);
+		} else {
+			return _elm_lang$core$Maybe$Nothing;
+		}
+	};
+	var isSendMsg = function (frame) {
+		var _p4 = frame;
+		if (_p4.ctor === 'Send') {
+			return true;
+		} else {
+			return false;
+		}
+	};
+	var msgs = A2(
+		_elm_lang$core$List$filterMap,
+		extractMsg,
+		A2(_user$project$Style_Core$takeWhile, isSendMsg, model.frames));
+	var remaining = A2(_user$project$Style_Core$dropWhile, isSendMsg, model.frames);
+	return _elm_lang$core$Native_Utils.update(
+		model,
+		{
+			messages: A2(_elm_lang$core$Basics_ops['++'], msgs, model.messages),
+			frames: remaining
+		});
+};
+var _user$project$Style_Core$interrupt = F3(
+	function (model, interruption, remaining) {
 		return _elm_lang$core$Native_Utils.update(
 			model,
 			{
-				elapsed: elapsed,
-				start: _elm_lang$core$Maybe$Just(start)
+				frames: interruption,
+				interruption: remaining,
+				previous: function () {
+					var _p5 = _elm_lang$core$List$head(model.frames);
+					if (_p5.ctor === 'Nothing') {
+						return model.previous;
+					} else {
+						return A2(_user$project$Style_Collection$bake, model.current, model.previous);
+					}
+				}()
 			});
 	});
-var _user$project$Style_Core$emptyKeyframe = {
-	properties: _elm_lang$core$Native_List.fromArray(
-		[]),
-	delay: 0.0,
-	retarget: _elm_lang$core$Maybe$Nothing
+var _user$project$Style_Core$init = function ($static) {
+	return {
+		times: {current: 0.0, start: _elm_lang$core$Maybe$Nothing, dt: 0.0},
+		frames: _elm_lang$core$Native_List.fromArray(
+			[]),
+		current: A2(
+			_elm_lang$core$List$map,
+			_user$project$Style_PropertyHelpers$toDynamic(
+				{stiffness: 170, damping: 26}),
+			$static),
+		previous: $static,
+		interruption: _elm_lang$core$Native_List.fromArray(
+			[]),
+		nudges: _elm_lang$core$Native_List.fromArray(
+			[]),
+		messages: _elm_lang$core$Native_List.fromArray(
+			[]),
+		defaults: {
+			spring: {stiffness: 170, damping: 26}
+		}
+	};
 };
-var _user$project$Style_Core$empty = {
-	elapsed: 0.0,
-	start: _elm_lang$core$Maybe$Nothing,
-	frames: _elm_lang$core$Native_List.fromArray(
-		[]),
-	previous: _elm_lang$core$Native_List.fromArray(
-		[]),
-	interruption: _elm_lang$core$Native_List.fromArray(
-		[]),
-	repeatCache: _elm_lang$core$Maybe$Nothing
+var _user$project$Style_Core$elapsed = function (times) {
+	var _p6 = times.start;
+	if (_p6.ctor === 'Nothing') {
+		return 0;
+	} else {
+		return times.current - _p6._0;
+	}
 };
-var _user$project$Style_Core$Model = F6(
-	function (a, b, c, d, e, f) {
-		return {start: a, elapsed: b, frames: c, previous: d, interruption: e, repeatCache: f};
+var _user$project$Style_Core$applyStep = F5(
+	function (model, spring, from, target, physics) {
+		var targeted = {destination: target, stiffness: spring.stiffness, damping: spring.damping};
+		var positioned = _elm_lang$core$Native_Utils.eq(
+			_user$project$Style_Core$elapsed(model.times),
+			0.0) ? {position: from, velocity: physics.physical.velocity, mass: 1} : physics.physical;
+		var finalPhysical = A3(_user$project$Style_Spring$update, model.times.dt, targeted, positioned);
+		return _elm_lang$core$Native_Utils.update(
+			physics,
+			{physical: finalPhysical, spring: targeted});
+	});
+var _user$project$Style_Core$Model = F8(
+	function (a, b, c, d, e, f, g, h) {
+		return {times: a, previous: b, current: c, frames: d, interruption: e, defaults: f, nudges: g, messages: h};
+	});
+var _user$project$Style_Core$Defaults = function (a) {
+	return {spring: a};
+};
+var _user$project$Style_Core$Times = F3(
+	function (a, b, c) {
+		return {current: a, start: b, dt: c};
 	});
 var _user$project$Style_Core$Interruption = F2(
 	function (a, b) {
 		return {at: a, frame: b};
-	});
-var _user$project$Style_Core$Keyframe = F3(
-	function (a, b, c) {
-		return {properties: a, delay: b, retarget: c};
 	});
 var _user$project$Style_Core$Targeted = F2(
 	function (a, b) {
@@ -15231,293 +15210,244 @@ var _user$project$Style_Core$Targeted = F2(
 var _user$project$Style_Core$Tick = function (a) {
 	return {ctor: 'Tick', _0: a};
 };
-var _user$project$Style_Core$QueueRepeat = F2(
-	function (a, b) {
-		return {ctor: 'QueueRepeat', _0: a, _1: b};
-	});
-var _user$project$Style_Core$Repeat = F2(
-	function (a, b) {
-		return {ctor: 'Repeat', _0: a, _1: b};
-	});
+var _user$project$Style_Core$Nudge = function (a) {
+	return {ctor: 'Nudge', _0: a};
+};
 var _user$project$Style_Core$Interrupt = function (a) {
 	return {ctor: 'Interrupt', _0: a};
 };
 var _user$project$Style_Core$Queue = function (a) {
 	return {ctor: 'Queue', _0: a};
 };
-var _user$project$Style_Core$tick = F6(
-	function (model, current, totalElapsed, dt, start, now) {
-		var elapsed = totalElapsed - current.delay;
-		if (_elm_lang$core$Native_Utils.eq(dt, 0) || (_elm_lang$core$Native_Utils.cmp(elapsed, 0) < 0)) {
-			return A3(_user$project$Style_Core$continue, model, totalElapsed, start);
+var _user$project$Style_Core$Send = function (a) {
+	return {ctor: 'Send', _0: a};
+};
+var _user$project$Style_Core$Update = function (a) {
+	return {ctor: 'Update', _0: a};
+};
+var _user$project$Style_Core$Set = function (a) {
+	return {ctor: 'Set', _0: a};
+};
+var _user$project$Style_Core$WithSpringTo = F2(
+	function (a, b) {
+		return {ctor: 'WithSpringTo', _0: a, _1: b};
+	});
+var _user$project$Style_Core$To = function (a) {
+	return {ctor: 'To', _0: a};
+};
+var _user$project$Style_Core$step = F2(
+	function (frame, model) {
+		step:
+		while (true) {
+			var _p7 = frame;
+			switch (_p7.ctor) {
+				case 'WaitTill':
+					return (_elm_lang$core$Native_Utils.cmp(_p7._0, model.times.current) < 1) ? {ctor: '_Tuple2', _0: model.current, _1: true} : {ctor: '_Tuple2', _0: model.current, _1: false};
+				case 'Wait':
+					return {ctor: '_Tuple2', _0: model.current, _1: true};
+				case 'Send':
+					return {ctor: '_Tuple2', _0: model.current, _1: true};
+				case 'Set':
+					var advanced = A4(
+						_user$project$Style_Collection$map3,
+						_user$project$Style_Core$setStep(model),
+						model.previous,
+						_p7._0,
+						model.current);
+					return {ctor: '_Tuple2', _0: advanced, _1: true};
+				case 'To':
+					var advanced = A4(
+						_user$project$Style_Collection$map3,
+						A2(_user$project$Style_Core$applyStep, model, model.defaults.spring),
+						model.previous,
+						_p7._0,
+						model.current);
+					return {
+						ctor: '_Tuple2',
+						_0: advanced,
+						_1: _user$project$Style_Core$isDone(advanced)
+					};
+				case 'WithSpringTo':
+					var advanced = A4(
+						_user$project$Style_Collection$map3,
+						A2(_user$project$Style_Core$applyStep, model, _p7._0),
+						model.previous,
+						_p7._1,
+						model.current);
+					return {
+						ctor: '_Tuple2',
+						_0: advanced,
+						_1: _user$project$Style_Core$isDone(advanced)
+					};
+				default:
+					var target = A2(_user$project$Style_Collection$apply, _p7._0, model.previous);
+					var _v9 = _user$project$Style_Core$To(target),
+						_v10 = model;
+					frame = _v9;
+					model = _v10;
+					continue step;
+			}
+		}
+	});
+var _user$project$Style_Core$tick = F2(
+	function (currentFrame, model) {
+		if (_elm_lang$core$Native_Utils.eq(model.times.dt, 0) || (_elm_lang$core$Native_Utils.cmp(
+			_user$project$Style_Core$elapsed(model.times),
+			0) < 0)) {
+			return model;
 		} else {
-			if (A2(_user$project$Style_Core$done, elapsed, current)) {
-				var interruption = A2(
-					_elm_lang$core$List$map,
-					function (inter) {
-						return _elm_lang$core$Native_Utils.update(
-							inter,
-							{at: inter.at - totalElapsed});
-					},
-					model.interruption);
-				var previous = A2(
-					_user$project$Style_Core$bake,
-					A4(_user$project$Style_Core$step, elapsed, dt, model.previous, current),
-					model.previous);
-				var frames = A2(_elm_lang$core$List$drop, 1, model.frames);
-				var amended = function () {
-					var _p47 = _elm_lang$core$List$head(frames);
-					if (_p47.ctor === 'Nothing') {
-						return previous;
-					} else {
-						return A2(_user$project$Style_Core$amend, previous, _p47._0);
-					}
-				}();
-				var initialized = A3(
-					_user$project$Style_Core$mapTo,
-					0,
-					A2(_user$project$Style_Core$initializeFrame, amended, amended),
-					frames);
-				var newModel = _elm_lang$core$Native_Utils.update(
+			var _p8 = A2(_user$project$Style_Core$step, currentFrame, model);
+			var props = _p8._0;
+			var done = _p8._1;
+			return done ? A2(
+				_user$project$Style_Core$setStart,
+				(_elm_lang$core$Native_Utils.cmp(
+					_elm_lang$core$List$length(model.frames),
+					1) > 0) ? _elm_lang$core$Maybe$Just(model.times.current) : _elm_lang$core$Maybe$Nothing,
+				_elm_lang$core$Native_Utils.update(
 					model,
 					{
-						elapsed: 0.0,
-						start: _elm_lang$core$Maybe$Just(now),
-						previous: amended,
-						frames: initialized,
-						interruption: interruption
-					});
-				if (_elm_lang$core$Native_Utils.eq(
-					_elm_lang$core$List$length(newModel.frames),
-					0)) {
-					var _p48 = newModel.repeatCache;
-					if (_p48.ctor === 'Nothing') {
-						return newModel;
-					} else {
-						var _p49 = _p48._0;
-						var newRepeat = _elm_lang$core$Native_Utils.eq(
-							_elm_lang$core$Basics$fst(_p49),
-							1) ? _elm_lang$core$Maybe$Nothing : _elm_lang$core$Maybe$Just(
-							{
-								ctor: '_Tuple2',
-								_0: _elm_lang$core$Basics$fst(_p49) - 1,
-								_1: _elm_lang$core$Basics$snd(_p49)
-							});
-						return A2(
-							_user$project$Style_Core$update,
-							_user$project$Style_Core$Queue(
-								_elm_lang$core$Basics$snd(_p49)),
-							_elm_lang$core$Native_Utils.update(
-								newModel,
-								{repeatCache: newRepeat}));
-					}
-				} else {
-					return newModel;
-				}
-			} else {
+						current: props,
+						frames: A2(_elm_lang$core$List$drop, 1, model.frames),
+						previous: A2(_user$project$Style_Collection$bake, props, model.previous)
+					})) : _elm_lang$core$Native_Utils.update(
+				model,
+				{current: props});
+		}
+	});
+var _user$project$Style_Core$WaitTill = function (a) {
+	return {ctor: 'WaitTill', _0: a};
+};
+var _user$project$Style_Core$initWaitTimes = function (model) {
+	var _p9 = _elm_lang$core$List$head(model.frames);
+	if (_p9.ctor === 'Nothing') {
+		return model;
+	} else {
+		var _p10 = _p9._0;
+		if (_p10.ctor === 'Wait') {
+			return _elm_lang$core$Native_Utils.update(
+				model,
+				{
+					frames: A2(
+						_elm_lang$core$List_ops['::'],
+						_user$project$Style_Core$WaitTill(_p10._0 + model.times.current),
+						A2(_elm_lang$core$List$drop, 1, model.frames))
+				});
+		} else {
+			return model;
+		}
+	}
+};
+var _user$project$Style_Core$update = F2(
+	function (action, model) {
+		var _p11 = action;
+		switch (_p11.ctor) {
+			case 'Queue':
 				return _elm_lang$core$Native_Utils.update(
 					model,
 					{
-						elapsed: elapsed,
-						start: _elm_lang$core$Maybe$Just(start),
-						frames: A3(
-							_user$project$Style_Core$mapTo,
-							0,
-							A3(_user$project$Style_Core$step, elapsed, dt, model.previous),
-							model.frames)
+						frames: A2(_elm_lang$core$Basics_ops['++'], model.frames, _p11._0)
 					});
-			}
-		}
-	});
-var _user$project$Style_Core$update = F2(
-	function (action, model) {
-		update:
-		while (true) {
-			var _p50 = action;
-			switch (_p50.ctor) {
-				case 'Queue':
-					var _p53 = _p50._0;
-					var _p51 = _elm_lang$core$List$head(model.frames);
-					if (_p51.ctor === 'Nothing') {
-						var amended = function () {
-							var _p52 = _elm_lang$core$List$head(_p53);
-							if (_p52.ctor === 'Nothing') {
-								return model.previous;
-							} else {
-								return A2(_user$project$Style_Core$amend, model.previous, _p52._0);
-							}
-						}();
-						var initialized = A3(
-							_user$project$Style_Core$mapTo,
-							0,
-							A2(_user$project$Style_Core$initializeFrame, amended, amended),
-							_p53);
-						return _elm_lang$core$Native_Utils.update(
+			case 'Nudge':
+				return _elm_lang$core$Native_Utils.update(
+					model,
+					{
+						nudges: A2(_elm_lang$core$List_ops['::'], _p11._0, model.nudges)
+					});
+			case 'Interrupt':
+				var _p13 = _p11._0;
+				var _p12 = _elm_lang$core$List$head(_p13);
+				if (_p12.ctor === 'Nothing') {
+					return model;
+				} else {
+					if (_p12._0.ctor === 'Wait') {
+						return (_elm_lang$core$Native_Utils.cmp(
+							_elm_lang$core$List$length(_p13),
+							2) < 0) ? model : _elm_lang$core$Native_Utils.update(
 							model,
-							{frames: initialized, previous: amended});
+							{
+								interruption: A2(
+									_elm_lang$core$List_ops['::'],
+									{
+										at: model.times.current + _p12._0._0,
+										frame: A2(_elm_lang$core$List$drop, 1, _p13)
+									},
+									model.interruption)
+							});
 					} else {
 						return _elm_lang$core$Native_Utils.update(
 							model,
 							{
-								frames: A2(_elm_lang$core$Basics_ops['++'], model.frames, _p53)
+								interruption: A2(
+									_elm_lang$core$List_ops['::'],
+									{at: model.times.current, frame: _p13},
+									model.interruption)
 							});
 					}
-				case 'Interrupt':
-					var _p58 = _p50._0;
-					var _p54 = _elm_lang$core$List$head(_p58);
-					if (_p54.ctor === 'Nothing') {
-						return model;
-					} else {
-						var _p57 = _p54._0;
-						var last = _elm_lang$core$List$head(
-							_elm_lang$core$List$reverse(model.interruption));
-						var interruptions = function () {
-							var _p55 = last;
-							if (_p55.ctor === 'Nothing') {
-								return _elm_lang$core$Native_List.fromArray(
-									[
-										{
-										at: model.elapsed + _p57.delay,
-										frame: A2(
-											_elm_lang$core$List$map,
-											function (i) {
-												return _elm_lang$core$Native_Utils.update(
-													i,
-													{delay: 0});
-											},
-											_p58)
-									}
-									]);
-							} else {
-								var _p56 = _p55._0;
-								return A2(
-									_elm_lang$core$List_ops['::'],
-									_p56,
-									_elm_lang$core$Native_List.fromArray(
-										[
-											{
-											at: (model.elapsed + _p57.delay) - _p56.at,
-											frame: A2(
-												_elm_lang$core$List$map,
-												function (i) {
-													return _elm_lang$core$Native_Utils.update(
-														i,
-														{delay: 0});
-												},
-												_p58)
-										}
-										]));
-							}
-						}();
-						return _elm_lang$core$Native_Utils.update(
-							model,
-							{interruption: interruptions});
-					}
-				case 'Repeat':
-					var _p60 = _p50._0;
-					var _p59 = _p50._1;
-					if (_elm_lang$core$Native_Utils.cmp(_p60, 0) < 1) {
-						return model;
-					} else {
-						if (_elm_lang$core$Native_Utils.eq(_p60, 1)) {
-							var _v31 = _user$project$Style_Core$Interrupt(_p59),
-								_v32 = model;
-							action = _v31;
-							model = _v32;
-							continue update;
-						} else {
-							var newModel = A2(
-								_user$project$Style_Core$update,
-								_user$project$Style_Core$Interrupt(_p59),
-								model);
-							return _elm_lang$core$Native_Utils.update(
-								newModel,
-								{
-									repeatCache: _elm_lang$core$Maybe$Just(
-										{ctor: '_Tuple2', _0: _p60 - 1, _1: _p59})
-								});
-						}
-					}
-				case 'QueueRepeat':
-					var _p62 = _p50._0;
-					var _p61 = _p50._1;
-					if (_elm_lang$core$Native_Utils.cmp(_p62, 0) < 1) {
-						return model;
-					} else {
-						var repeatCache = (_elm_lang$core$Native_Utils.cmp(_p62, 1) > 0) ? _elm_lang$core$Maybe$Just(
-							{ctor: '_Tuple2', _0: _p62 - 1, _1: _p61}) : _elm_lang$core$Maybe$Nothing;
-						var newModel = A2(
-							_user$project$Style_Core$update,
-							_user$project$Style_Core$Queue(_p61),
-							model);
-						return _elm_lang$core$Native_Utils.update(
-							newModel,
-							{repeatCache: repeatCache});
-					}
-				default:
-					var _p68 = _p50._0;
-					var _p63 = A2(_user$project$Style_Core$getTimes, _p68, model);
-					var start = _p63._0;
-					var elapsed = _p63._1;
-					var dt = _p63._2;
-					var _p64 = _elm_lang$core$List$head(model.interruption);
-					if (_p64.ctor === 'Just') {
-						var _p66 = _p64._0;
-						if (_elm_lang$core$Native_Utils.cmp(elapsed, _p66.at) > -1) {
-							return A4(
+				}
+			default:
+				var _p20 = _p11._0;
+				var modelWithTime = _user$project$Style_Core$getMessages(
+					_user$project$Style_Core$initWaitTimes(
+						_user$project$Style_Core$applyNudges(
+							A2(_user$project$Style_Core$setTimes, _p20, model))));
+				var _p14 = _elm_lang$core$List$head(model.interruption);
+				if (_p14.ctor === 'Just') {
+					var _p16 = _p14._0;
+					if (_elm_lang$core$Native_Utils.cmp(modelWithTime.times.current, _p16.at) > -1) {
+						return A2(
+							_user$project$Style_Core$setStart,
+							_elm_lang$core$Maybe$Just(_p20),
+							A3(
 								_user$project$Style_Core$interrupt,
-								_p68,
 								model,
-								_p66.frame,
-								A2(_elm_lang$core$List$drop, 1, model.interruption));
-						} else {
-							var _p65 = _elm_lang$core$List$head(model.frames);
-							if (_p65.ctor === 'Nothing') {
-								return A3(_user$project$Style_Core$continue, model, elapsed, start);
-							} else {
-								return A6(_user$project$Style_Core$tick, model, _p65._0, elapsed, dt, start, _p68);
-							}
-						}
+								_p16.frame,
+								A2(_elm_lang$core$List$drop, 1, model.interruption)));
 					} else {
-						var _p67 = _elm_lang$core$List$head(model.frames);
-						if (_p67.ctor === 'Nothing') {
-							return _elm_lang$core$Native_Utils.update(
-								model,
-								{
-									elapsed: 0.0,
-									start: _elm_lang$core$Maybe$Nothing,
-									frames: _elm_lang$core$Native_List.fromArray(
-										[])
-								});
+						var _p15 = _elm_lang$core$List$head(modelWithTime.frames);
+						if (_p15.ctor === 'Nothing') {
+							return modelWithTime;
 						} else {
-							return A6(_user$project$Style_Core$tick, model, _p67._0, elapsed, dt, start, _p68);
+							return A2(_user$project$Style_Core$tick, _p15._0, modelWithTime);
 						}
 					}
-			}
+				} else {
+					var _p17 = _elm_lang$core$List$head(modelWithTime.frames);
+					if (_p17.ctor === 'Nothing') {
+						return A2(_user$project$Style_Core$setStart, _elm_lang$core$Maybe$Nothing, modelWithTime);
+					} else {
+						var _p19 = _p17._0;
+						var _p18 = modelWithTime.times.start;
+						if (_p18.ctor === 'Nothing') {
+							return A2(
+								_user$project$Style_Core$tick,
+								_p19,
+								A2(
+									_user$project$Style_Core$setStart,
+									_elm_lang$core$Maybe$Just(_p20),
+									modelWithTime));
+						} else {
+							return A2(_user$project$Style_Core$tick, _p19, modelWithTime);
+						}
+					}
+				}
 		}
 	});
+var _user$project$Style_Core$Wait = function (a) {
+	return {ctor: 'Wait', _0: a};
+};
 
 var _user$project$Style$renderAttr = function (_p0) {
 	var _p1 = _p0;
-	var _p3 = _p1._0;
-	var _p2 = _elm_lang$core$List$head(_p3.frames);
-	if (_p2.ctor === 'Nothing') {
-		return _user$project$Style_PropertyHelpers$renderAttr(_p3.previous);
-	} else {
-		return _user$project$Style_PropertyHelpers$renderAttr(
-			A2(_user$project$Style_Core$bake, _p2._0, _p3.previous));
-	}
+	var _p2 = _p1._0;
+	return _user$project$Style_PropertyHelpers$renderAttr(
+		A2(_user$project$Style_Collection$bake, _p2.current, _p2.previous));
 };
-var _user$project$Style$render = function (_p4) {
-	var _p5 = _p4;
-	var _p7 = _p5._0;
-	var _p6 = _elm_lang$core$List$head(_p7.frames);
-	if (_p6.ctor === 'Nothing') {
-		return _user$project$Style_PropertyHelpers$render(_p7.previous);
-	} else {
-		return _user$project$Style_PropertyHelpers$render(
-			A2(_user$project$Style_Core$bake, _p6._0, _p7.previous));
-	}
+var _user$project$Style$render = function (_p3) {
+	var _p4 = _p3;
+	var _p5 = _p4._0;
+	return _user$project$Style_PropertyHelpers$render(
+		A2(_user$project$Style_Collection$bake, _p5.current, _p5.previous));
 };
 var _user$project$Style$attrs = function (animation) {
 	return A2(
@@ -15526,79 +15456,62 @@ var _user$project$Style$attrs = function (animation) {
 			_user$project$Style$render(animation)),
 		_user$project$Style$renderAttr(animation));
 };
-var _user$project$Style$applyKeyframeOptions = function (options) {
-	var applyOpt = function (prop) {
-		var addOptions = function (a) {
-			var withEase = A2(
-				_elm_lang$core$Maybe$map,
-				function (ease) {
-					return _elm_lang$core$Native_Utils.update(
-						_user$project$Style_PropertyHelpers$emptyEasing,
-						{ease: ease});
-				},
-				options.easing);
-			var withDuration = function () {
-				var _p8 = options.duration;
-				if (_p8.ctor === 'Nothing') {
-					return withEase;
-				} else {
-					var _p10 = _p8._0;
-					var _p9 = withEase;
-					if (_p9.ctor === 'Nothing') {
-						return _elm_lang$core$Maybe$Just(
-							_elm_lang$core$Native_Utils.update(
-								_user$project$Style_PropertyHelpers$emptyEasing,
-								{duration: _p10}));
-					} else {
-						return _elm_lang$core$Maybe$Just(
-							_elm_lang$core$Native_Utils.update(
-								_p9._0,
-								{duration: _p10}));
-					}
-				}
-			}();
-			var newSpring = function () {
-				var _p11 = options.spring;
-				if (_p11.ctor === 'Nothing') {
-					return a.spring;
-				} else {
-					var _p12 = _p11._0;
-					var oldSpring = a.spring;
-					return _elm_lang$core$Native_Utils.update(
-						oldSpring,
-						{stiffness: _p12.stiffness, damping: _p12.damping});
-				}
-			}();
-			return _elm_lang$core$Native_Utils.update(
-				a,
-				{spring: newSpring, easing: withDuration});
-		};
+var _user$project$Style$send = F2(
+	function (msg, preAction) {
 		return _elm_lang$core$Native_Utils.update(
-			prop,
+			preAction,
 			{
-				current: A2(_user$project$Style_PropertyHelpers$update, addOptions, prop.current)
+				frames: A2(
+					_elm_lang$core$Basics_ops['++'],
+					preAction.frames,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_user$project$Style_Core$Send(msg)
+						]))
 			});
-	};
-	var frame = options.frame;
-	var newProperties = A2(_elm_lang$core$List$map, applyOpt, frame.properties);
-	return _elm_lang$core$Native_Utils.update(
-		frame,
-		{properties: newProperties});
-};
-var _user$project$Style$queueRepeat = function (i) {
-	return {
-		frames: _elm_lang$core$Native_List.fromArray(
-			[]),
-		action: _user$project$Style_Core$QueueRepeat(i)
-	};
-};
-var _user$project$Style$repeat = function (i) {
-	return {
-		frames: _elm_lang$core$Native_List.fromArray(
-			[]),
-		action: _user$project$Style_Core$Repeat(i)
-	};
-};
+	});
+var _user$project$Style$to = F2(
+	function (sty, preAction) {
+		return _elm_lang$core$Native_Utils.update(
+			preAction,
+			{
+				frames: A2(
+					_elm_lang$core$Basics_ops['++'],
+					preAction.frames,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_user$project$Style_Core$To(sty)
+						]))
+			});
+	});
+var _user$project$Style$wait = F2(
+	function (delay, preAction) {
+		return _elm_lang$core$Native_Utils.update(
+			preAction,
+			{
+				frames: A2(
+					_elm_lang$core$Basics_ops['++'],
+					preAction.frames,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_user$project$Style_Core$Wait(delay)
+						]))
+			});
+	});
+var _user$project$Style$set = F2(
+	function (props, preAction) {
+		return _elm_lang$core$Native_Utils.update(
+			preAction,
+			{
+				frames: A2(
+					_elm_lang$core$Basics_ops['++'],
+					preAction.frames,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_user$project$Style_Core$Set(props)
+						]))
+			});
+	});
 var _user$project$Style$queue = {
 	frames: _elm_lang$core$Native_List.fromArray(
 		[]),
@@ -15609,256 +15522,98 @@ var _user$project$Style$animate = {
 		[]),
 	action: _user$project$Style_Core$Interrupt
 };
-var _user$project$Style$convertToRetargetFn = F3(
-	function (changes, i, prop) {
-		var dynamicProp = _elm_lang$core$List$head(
-			A2(
-				_elm_lang$core$List$drop,
-				i - 1,
-				A2(
-					_elm_lang$core$List$filter,
-					function (chng) {
-						return _elm_lang$core$Native_Utils.eq(
-							_user$project$Style_PropertyHelpers$id(chng),
-							_user$project$Style_PropertyHelpers$id(prop));
-					},
-					changes)));
-		var _p13 = dynamicProp;
-		if (_p13.ctor === 'Nothing') {
-			return prop;
-		} else {
-			return A2(_user$project$Style_PropertyHelpers$apply, _p13._0, prop);
-		}
+var _user$project$Style$update = F2(
+	function (props, preAction) {
+		return _elm_lang$core$Native_Utils.update(
+			preAction,
+			{
+				frames: A2(
+					_elm_lang$core$Basics_ops['++'],
+					preAction.frames,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_user$project$Style_Core$Update(props)
+						]))
+			});
+	});
+var _user$project$Style$spring = F3(
+	function (spring, sty, action) {
+		return _elm_lang$core$Native_Utils.update(
+			action,
+			{
+				frames: A2(
+					_elm_lang$core$Basics_ops['++'],
+					action.frames,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							A2(_user$project$Style_Core$WithSpringTo, spring, sty)
+						]))
+			});
 	});
 var _user$project$Style$forever = 1 / 0;
-var _user$project$Style$emptyKeyframeWithOptions = {frame: _user$project$Style_Core$emptyKeyframe, duration: _elm_lang$core$Maybe$Nothing, easing: _elm_lang$core$Maybe$Nothing, spring: _elm_lang$core$Maybe$Nothing};
-var _user$project$Style$andThen = function (preaction) {
-	return _elm_lang$core$Native_Utils.update(
-		preaction,
-		{
-			frames: A2(
-				_elm_lang$core$Basics_ops['++'],
-				preaction.frames,
-				_elm_lang$core$Native_List.fromArray(
-					[_user$project$Style$emptyKeyframeWithOptions]))
-		});
-};
-var _user$project$Style$updateOrCreate = F2(
-	function (preaction, fn) {
-		return _elm_lang$core$Native_Utils.update(
-			preaction,
-			{
-				frames: function () {
-					var _p14 = _elm_lang$core$List$reverse(preaction.frames);
-					if (_p14.ctor === '[]') {
-						return _elm_lang$core$Native_List.fromArray(
-							[
-								fn(_user$project$Style$emptyKeyframeWithOptions)
-							]);
-					} else {
-						return _elm_lang$core$List$reverse(
-							A2(
-								_elm_lang$core$List_ops['::'],
-								fn(_p14._0),
-								_p14._1));
-					}
-				}()
-			});
-	});
-var _user$project$Style$spring = F2(
-	function (spring, action) {
-		var newSpring = _elm_lang$core$Maybe$Just(
-			{destination: 1.0, damping: spring.damping, stiffness: spring.stiffness});
-		return A2(
-			_user$project$Style$updateOrCreate,
-			action,
-			function (a) {
-				return _elm_lang$core$Native_Utils.update(
-					a,
-					{spring: newSpring});
-			});
-	});
-var _user$project$Style$update = F2(
-	function (dynamicUpdate, action) {
-		return A2(
-			_user$project$Style$updateOrCreate,
-			action,
-			function (kfWithOptions) {
-				var frame = kfWithOptions.frame;
-				var updatedFrame = _elm_lang$core$Native_Utils.update(
-					frame,
-					{
-						retarget: _elm_lang$core$Maybe$Just(
-							_user$project$Style$convertToRetargetFn(dynamicUpdate)),
-						properties: A2(
-							_elm_lang$core$List$map,
-							function (prop) {
-								var empty = _user$project$Style_PropertyHelpers$vacate(prop);
-								return {
-									target: empty,
-									current: _user$project$Style_PropertyHelpers$toDynamic(empty)
-								};
-							},
-							dynamicUpdate)
-					});
-				return _elm_lang$core$Native_Utils.update(
-					kfWithOptions,
-					{frame: updatedFrame});
-			});
-	});
-var _user$project$Style$duration = F2(
-	function (dur, action) {
-		return A2(
-			_user$project$Style$updateOrCreate,
-			action,
-			function (a) {
-				return _elm_lang$core$Native_Utils.update(
-					a,
-					{
-						duration: _elm_lang$core$Maybe$Just(dur)
-					});
-			});
-	});
-var _user$project$Style$delay = F2(
-	function (delay, action) {
-		return A2(
-			_user$project$Style$updateOrCreate,
-			action,
-			function (a) {
-				var frame = a.frame;
-				var updatedFrame = _elm_lang$core$Native_Utils.update(
-					frame,
-					{delay: delay});
-				return _elm_lang$core$Native_Utils.update(
-					a,
-					{frame: updatedFrame});
-			});
-	});
-var _user$project$Style$easing = F2(
-	function (ease, action) {
-		return A2(
-			_user$project$Style$updateOrCreate,
-			action,
-			function (a) {
-				return _elm_lang$core$Native_Utils.update(
-					a,
-					{
-						easing: _elm_lang$core$Maybe$Just(ease)
-					});
-			});
-	});
-var _user$project$Style$to = F2(
-	function (sty, action) {
-		var deduped = A3(
-			_elm_lang$core$List$foldr,
-			F2(
-				function (x, acc) {
-					return A2(
-						_elm_lang$core$List$any,
-						function (y) {
-							return _elm_lang$core$Native_Utils.eq(
-								_user$project$Style_PropertyHelpers$id(x),
-								_user$project$Style_PropertyHelpers$id(y)) && (!_elm_lang$core$Native_Utils.eq(
-								_user$project$Style_PropertyHelpers$name(x),
-								'transform'));
-						},
-						acc) ? acc : A2(_elm_lang$core$List_ops['::'], x, acc);
-				}),
-			_elm_lang$core$Native_List.fromArray(
-				[]),
-			sty);
-		var dynamicProperties = A2(
-			_elm_lang$core$List$map,
-			function (prop) {
-				return {
-					target: prop,
-					current: _user$project$Style_PropertyHelpers$toDynamic(prop)
-				};
-			},
-			deduped);
-		return A2(
-			_user$project$Style$updateOrCreate,
-			action,
-			function (kfWithOptions) {
-				var frame = kfWithOptions.frame;
-				var updatedFrame = _elm_lang$core$Native_Utils.update(
-					frame,
-					{properties: dynamicProperties});
-				return _elm_lang$core$Native_Utils.update(
-					kfWithOptions,
-					{frame: updatedFrame});
-			});
-	});
-var _user$project$Style$set = F2(
-	function (staticProps, action) {
-		var actionWithProps = A2(_user$project$Style$to, staticProps, action);
-		return A2(
-			_user$project$Style$updateOrCreate,
-			actionWithProps,
-			function (kfWithOpts) {
-				return _elm_lang$core$Native_Utils.update(
-					kfWithOpts,
-					{
-						duration: _elm_lang$core$Maybe$Just(0),
-						easing: _elm_lang$core$Maybe$Just(
-							function (x) {
-								return x;
-							})
-					});
-			});
-	});
-var _user$project$Style$KeyframeWithOptions = F4(
-	function (a, b, c, d) {
-		return {frame: a, duration: b, easing: c, spring: d};
-	});
 var _user$project$Style$PreAction = F2(
 	function (a, b) {
 		return {frames: a, action: b};
 	});
+var _user$project$Style$Options = function (a) {
+	return {spring: a};
+};
 var _user$project$Style$A = function (a) {
 	return {ctor: 'A', _0: a};
 };
-var _user$project$Style$init = function (sty) {
-	var empty = _user$project$Style_Core$empty;
-	var deduped = A3(
-		_elm_lang$core$List$foldr,
-		F2(
-			function (x, acc) {
-				return A2(
-					_elm_lang$core$List$any,
-					function (y) {
-						return _elm_lang$core$Native_Utils.eq(
-							_user$project$Style_PropertyHelpers$id(x),
-							_user$project$Style_PropertyHelpers$id(y)) && (!_elm_lang$core$Native_Utils.eq(
-							_user$project$Style_PropertyHelpers$name(x),
-							'transform'));
-					},
-					acc) ? acc : A2(_elm_lang$core$List_ops['::'], x, acc);
-			}),
-		_elm_lang$core$Native_List.fromArray(
-			[]),
-		sty);
+var _user$project$Style$init = function (style) {
 	return _user$project$Style$A(
-		_elm_lang$core$Native_Utils.update(
-			empty,
-			{previous: deduped}));
+		_user$project$Style_Core$init(style));
 };
-var _user$project$Style$on = F2(
-	function (_p15, preaction) {
-		var _p16 = _p15;
-		var action = preaction.action(
-			A2(_elm_lang$core$List$map, _user$project$Style$applyKeyframeOptions, preaction.frames));
+var _user$project$Style$initWith = F2(
+	function (options, style) {
+		var model = _user$project$Style_Core$init(style);
+		var newDefaults = model.defaults;
+		var withSpring = _elm_lang$core$Native_Utils.update(
+			newDefaults,
+			{spring: options.spring});
 		return _user$project$Style$A(
-			A2(_user$project$Style_Core$update, action, _p16._0));
+			_elm_lang$core$Native_Utils.update(
+				model,
+				{defaults: withSpring}));
 	});
-var _user$project$Style$tick = F2(
-	function (time, _p17) {
-		var _p18 = _p17;
+var _user$project$Style$on = F2(
+	function (_p6, preaction) {
+		var _p7 = _p6;
 		return _user$project$Style$A(
 			A2(
 				_user$project$Style_Core$update,
-				_user$project$Style_Core$Tick(time),
-				_p18._0));
+				preaction.action(preaction.frames),
+				_p7._0));
+	});
+var _user$project$Style$nudge = F2(
+	function (style, _p8) {
+		var _p9 = _p8;
+		return _user$project$Style$A(
+			A2(
+				_user$project$Style_Core$update,
+				_user$project$Style_Core$Nudge(style),
+				_p9._0));
+	});
+var _user$project$Style$tick = F2(
+	function (time, _p10) {
+		var _p11 = _p10;
+		var $new = A2(
+			_user$project$Style_Core$update,
+			_user$project$Style_Core$Tick(time),
+			_p11._0);
+		var msgs = $new.messages;
+		return {
+			ctor: '_Tuple2',
+			_0: _user$project$Style$A(
+				_elm_lang$core$Native_Utils.update(
+					$new,
+					{
+						messages: _elm_lang$core$Native_List.fromArray(
+							[])
+					})),
+			_1: msgs
+		};
 	});
 
 var _user$project$Style_Sheet$init = F2(
@@ -15870,6 +15625,22 @@ var _user$project$Style_Sheet$init = F2(
 					ctor: '_Tuple2',
 					_0: id,
 					_1: _user$project$Style$init(
+						initFn(id))
+				};
+			},
+			ids);
+	});
+var _user$project$Style_Sheet$initWith = F3(
+	function (options, initFn, ids) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (id) {
+				return {
+					ctor: '_Tuple2',
+					_0: id,
+					_1: A2(
+						_user$project$Style$initWith,
+						options,
 						initFn(id))
 				};
 			},
@@ -15930,18 +15701,47 @@ var _user$project$Style_Sheet$render = F2(
 	});
 var _user$project$Style_Sheet$tick = F2(
 	function (time, sheet) {
-		return A2(
-			_elm_lang$core$List$map,
-			function (_p5) {
-				var _p6 = _p5;
-				return {
-					ctor: '_Tuple2',
-					_0: _p6._0,
-					_1: A2(_user$project$Style$tick, time, _p6._1)
-				};
+		return A3(
+			_elm_lang$core$List$foldl,
+			F2(
+				function (_p6, _p5) {
+					var _p7 = _p6;
+					var _p8 = _p5;
+					var _p9 = A2(_user$project$Style$tick, time, _p7._1);
+					var updated = _p9._0;
+					var msgs = _p9._1;
+					return {
+						ctor: '_Tuple2',
+						_0: A2(
+							_elm_lang$core$Basics_ops['++'],
+							_p8._0,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									{ctor: '_Tuple2', _0: _p7._0, _1: updated}
+								])),
+						_1: A2(_elm_lang$core$Basics_ops['++'], _p8._1, msgs)
+					};
+				}),
+			{
+				ctor: '_Tuple2',
+				_0: _elm_lang$core$Native_List.fromArray(
+					[]),
+				_1: _elm_lang$core$Native_List.fromArray(
+					[])
 			},
 			sheet);
 	});
+
+var _user$project$Msg$Animate = function (a) {
+	return {ctor: 'Animate', _0: a};
+};
+var _user$project$Msg$Print = function (a) {
+	return {ctor: 'Print', _0: a};
+};
+var _user$project$Msg$ShowMessage = function (a) {
+	return {ctor: 'ShowMessage', _0: a};
+};
+var _user$project$Msg$Toggle = {ctor: 'Toggle'};
 
 var _user$project$Animation$showMsg = F2(
 	function (id, style) {
@@ -15956,21 +15756,19 @@ var _user$project$Animation$showMsg = F2(
 						[
 							_user$project$Style_Properties$Display(_user$project$Style_Properties$None)
 						]),
-					_user$project$Style$andThen(
+					A2(
+						_user$project$Style$to,
+						_elm_lang$core$Native_List.fromArray(
+							[
+								_user$project$Style_Properties$Opacity(0)
+							]),
 						A2(
 							_user$project$Style$to,
 							_elm_lang$core$Native_List.fromArray(
 								[
-									_user$project$Style_Properties$Opacity(0)
+									_user$project$Style_Properties$Opacity(1)
 								]),
-							_user$project$Style$andThen(
-								A2(
-									_user$project$Style$to,
-									_elm_lang$core$Native_List.fromArray(
-										[
-											_user$project$Style_Properties$Opacity(1)
-										]),
-									_user$project$Style$animate))))));
+							_user$project$Style$animate))));
 		} else {
 			return style;
 		}
@@ -15984,14 +15782,14 @@ var _user$project$Animation$close = F2(
 					_user$project$Style$on,
 					style,
 					A2(
-						_user$project$Style$to,
-						_elm_lang$core$Native_List.fromArray(
-							[
-								A2(_user$project$Style_Properties$Rotate, -0.125, _user$project$Style_Properties$Turn)
-							]),
+						_user$project$Style$send,
+						_user$project$Msg$Print('finished closing'),
 						A2(
-							_user$project$Style$spring,
-							{stiffness: 500, damping: 30},
+							_user$project$Style$to,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A2(_user$project$Style_Properties$Rotate, -0.125, _user$project$Style_Properties$Turn)
+								]),
 							_user$project$Style$animate)));
 			case 'Submenu':
 				return A2(
@@ -16004,12 +15802,9 @@ var _user$project$Animation$close = F2(
 								A2(_user$project$Style_Properties$TranslateY, 0, _user$project$Style_Properties$Px)
 							]),
 						A2(
-							_user$project$Style$spring,
-							{stiffness: 400, damping: 28},
-							A2(
-								_user$project$Style$delay,
-								(_elm_lang$core$Basics$toFloat(_p1._0) * 5.0e-2) * _elm_lang$core$Time$second,
-								_user$project$Style$animate))));
+							_user$project$Style$wait,
+							(_elm_lang$core$Basics$toFloat(_p1._0) * 5.0e-2) * _elm_lang$core$Time$second,
+							_user$project$Style$animate)));
 			default:
 				return style;
 		}
@@ -16023,14 +15818,14 @@ var _user$project$Animation$open = F2(
 					_user$project$Style$on,
 					style,
 					A2(
-						_user$project$Style$to,
-						_elm_lang$core$Native_List.fromArray(
-							[
-								A2(_user$project$Style_Properties$Rotate, 0, _user$project$Style_Properties$Turn)
-							]),
+						_user$project$Style$send,
+						_user$project$Msg$Print('finished opening'),
 						A2(
-							_user$project$Style$spring,
-							{stiffness: 500, damping: 30},
+							_user$project$Style$to,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A2(_user$project$Style_Properties$Rotate, 0, _user$project$Style_Properties$Turn)
+								]),
 							_user$project$Style$animate)));
 			case 'Submenu':
 				return A2(
@@ -16043,12 +15838,9 @@ var _user$project$Animation$open = F2(
 								A2(_user$project$Style_Properties$TranslateY, 100, _user$project$Style_Properties$Px)
 							]),
 						A2(
-							_user$project$Style$spring,
-							{stiffness: 400, damping: 28},
-							A2(
-								_user$project$Style$delay,
-								(_elm_lang$core$Basics$toFloat(_p2._0) * 2.5e-2) * _elm_lang$core$Time$second,
-								_user$project$Style$animate))));
+							_user$project$Style$wait,
+							(_elm_lang$core$Basics$toFloat(_p2._0) * 2.5e-2) * _elm_lang$core$Time$second,
+							_user$project$Style$animate)));
 			default:
 				return style;
 		}
@@ -16091,8 +15883,11 @@ var _user$project$Animation$initStyle = F2(
 		}
 	});
 var _user$project$Animation$init = function (ids) {
-	return A2(
-		_user$project$Style_Sheet$init,
+	return A3(
+		_user$project$Style_Sheet$initWith,
+		{
+			spring: {stiffness: 170, damping: 26}
+		},
 		_user$project$Animation$initStyle(ids),
 		ids);
 };
@@ -16132,10 +15927,89 @@ var _user$project$Main$init = {
 	},
 	_1: _elm_lang$core$Platform_Cmd$none
 };
+var _user$project$Main$viewSubmenu = F3(
+	function (sheet, id, submenu) {
+		return A2(
+			_elm_lang$html$Html$div,
+			_elm_lang$core$Native_List.fromArray(
+				[
+					_elm_lang$html$Html_Attributes$class('child-button'),
+					_elm_lang$html$Html_Attributes$style(
+					A2(
+						_user$project$Style_Sheet$render,
+						sheet,
+						_user$project$Animation$Submenu(id))),
+					_elm_lang$html$Html_Events$onClick(
+					_user$project$Msg$ShowMessage(submenu.icon))
+				]),
+			_elm_lang$core$Native_List.fromArray(
+				[
+					A2(
+					_elm_lang$html$Html$i,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_elm_lang$html$Html_Attributes$class(
+							A2(_elm_lang$core$Basics_ops['++'], 'fa  fa-lg fa-', submenu.icon))
+						]),
+					_elm_lang$core$Native_List.fromArray(
+						[]))
+				]));
+	});
+var _user$project$Main$view = function (model) {
+	var submenus = A2(
+		_elm_lang$core$List$indexedMap,
+		_user$project$Main$viewSubmenu(model.sheet),
+		model.submenus);
+	var message = function () {
+		var _p0 = model.message;
+		if (_p0.ctor === 'Nothing') {
+			return A2(
+				_elm_lang$html$Html$div,
+				_elm_lang$core$Native_List.fromArray(
+					[]),
+				_elm_lang$core$Native_List.fromArray(
+					[]));
+		} else {
+			return A2(
+				_elm_lang$html$Html$div,
+				_elm_lang$core$Native_List.fromArray(
+					[
+						_elm_lang$html$Html_Attributes$class('message'),
+						_elm_lang$html$Html_Attributes$style(
+						A2(_user$project$Style_Sheet$render, model.sheet, _user$project$Animation$Message))
+					]),
+				_elm_lang$core$Native_List.fromArray(
+					[
+						_elm_lang$html$Html$text(_p0._0)
+					]));
+		}
+	}();
+	var icon = A2(
+		_elm_lang$html$Html$i,
+		_elm_lang$core$Native_List.fromArray(
+			[
+				_elm_lang$html$Html_Attributes$class('fa fa-close fa-3x'),
+				_elm_lang$html$Html_Attributes$style(
+				A2(_user$project$Style_Sheet$render, model.sheet, _user$project$Animation$Menu))
+			]),
+		_elm_lang$core$Native_List.fromArray(
+			[]));
+	return A2(
+		_elm_lang$html$Html$div,
+		_elm_lang$core$Native_List.fromArray(
+			[
+				_elm_lang$html$Html_Attributes$class('main-button'),
+				_elm_lang$html$Html_Events$onClick(_user$project$Msg$Toggle)
+			]),
+		A2(
+			_elm_lang$core$List_ops['::'],
+			icon,
+			A2(_elm_lang$core$List_ops['::'], message, submenus)));
+};
 var _user$project$Main$update = F2(
 	function (message, model) {
-		var _p0 = message;
-		switch (_p0.ctor) {
+		var _p1 = message;
+		switch (_p1.ctor) {
 			case 'Toggle':
 				return model.open ? {
 					ctor: '_Tuple2',
@@ -16162,126 +16036,61 @@ var _user$project$Main$update = F2(
 					_0: _elm_lang$core$Native_Utils.update(
 						model,
 						{
-							message: _elm_lang$core$Maybe$Just(_p0._0),
+							message: _elm_lang$core$Maybe$Just(_p1._0),
 							sheet: A2(_user$project$Style_Sheet$update, _user$project$Animation$showMsg, model.sheet)
 						}),
 					_1: _elm_lang$core$Platform_Cmd$none
 				};
+			case 'Print':
+				var _p2 = A2(_elm_lang$core$Debug$log, 'print', _p1._0);
+				return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
 			default:
-				return {
-					ctor: '_Tuple2',
-					_0: _elm_lang$core$Native_Utils.update(
-						model,
-						{
-							sheet: A2(_user$project$Style_Sheet$tick, _p0._0, model.sheet)
+				var _p3 = A2(_user$project$Style_Sheet$tick, _p1._0, model.sheet);
+				var newSheet = _p3._0;
+				var messages = _p3._1;
+				return A3(
+					_elm_lang$core$List$foldl,
+					F2(
+						function (msg, _p4) {
+							var _p5 = _p4;
+							var _p6 = A2(_user$project$Main$update, msg, _p5._0);
+							var $new = _p6._0;
+							var newCmds = _p6._1;
+							return {
+								ctor: '_Tuple2',
+								_0: $new,
+								_1: _elm_lang$core$Platform_Cmd$batch(
+									_elm_lang$core$Native_List.fromArray(
+										[_p5._1, newCmds]))
+							};
 						}),
-					_1: _elm_lang$core$Platform_Cmd$none
-				};
+					{
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							model,
+							{sheet: newSheet}),
+						_1: _elm_lang$core$Platform_Cmd$none
+					},
+					messages);
 		}
 	});
-var _user$project$Main$Model = F4(
-	function (a, b, c, d) {
-		return {submenus: a, open: b, message: c, sheet: d};
-	});
-var _user$project$Main$Submenu = function (a) {
-	return {icon: a};
-};
-var _user$project$Main$Animate = function (a) {
-	return {ctor: 'Animate', _0: a};
-};
-var _user$project$Main$ShowMessage = function (a) {
-	return {ctor: 'ShowMessage', _0: a};
-};
-var _user$project$Main$viewSubmenu = F3(
-	function (sheet, id, submenu) {
-		return A2(
-			_elm_lang$html$Html$div,
-			_elm_lang$core$Native_List.fromArray(
-				[
-					_elm_lang$html$Html_Attributes$class('child-button'),
-					_elm_lang$html$Html_Attributes$style(
-					A2(
-						_user$project$Style_Sheet$render,
-						sheet,
-						_user$project$Animation$Submenu(id))),
-					_elm_lang$html$Html_Events$onClick(
-					_user$project$Main$ShowMessage(submenu.icon))
-				]),
-			_elm_lang$core$Native_List.fromArray(
-				[
-					A2(
-					_elm_lang$html$Html$i,
-					_elm_lang$core$Native_List.fromArray(
-						[
-							_elm_lang$html$Html_Attributes$class(
-							A2(_elm_lang$core$Basics_ops['++'], 'fa  fa-lg fa-', submenu.icon))
-						]),
-					_elm_lang$core$Native_List.fromArray(
-						[]))
-				]));
-	});
-var _user$project$Main$Toggle = {ctor: 'Toggle'};
-var _user$project$Main$view = function (model) {
-	var submenus = A2(
-		_elm_lang$core$List$indexedMap,
-		_user$project$Main$viewSubmenu(model.sheet),
-		model.submenus);
-	var message = function () {
-		var _p1 = model.message;
-		if (_p1.ctor === 'Nothing') {
-			return A2(
-				_elm_lang$html$Html$div,
-				_elm_lang$core$Native_List.fromArray(
-					[]),
-				_elm_lang$core$Native_List.fromArray(
-					[]));
-		} else {
-			return A2(
-				_elm_lang$html$Html$div,
-				_elm_lang$core$Native_List.fromArray(
-					[
-						_elm_lang$html$Html_Attributes$class('message'),
-						_elm_lang$html$Html_Attributes$style(
-						A2(_user$project$Style_Sheet$render, model.sheet, _user$project$Animation$Message))
-					]),
-				_elm_lang$core$Native_List.fromArray(
-					[
-						_elm_lang$html$Html$text(_p1._0)
-					]));
-		}
-	}();
-	var icon = A2(
-		_elm_lang$html$Html$i,
-		_elm_lang$core$Native_List.fromArray(
-			[
-				_elm_lang$html$Html_Attributes$class('fa fa-close fa-3x'),
-				_elm_lang$html$Html_Attributes$style(
-				A2(_user$project$Style_Sheet$render, model.sheet, _user$project$Animation$Menu))
-			]),
-		_elm_lang$core$Native_List.fromArray(
-			[]));
-	return A2(
-		_elm_lang$html$Html$div,
-		_elm_lang$core$Native_List.fromArray(
-			[
-				_elm_lang$html$Html_Attributes$class('main-button'),
-				_elm_lang$html$Html_Events$onClick(_user$project$Main$Toggle)
-			]),
-		A2(
-			_elm_lang$core$List_ops['::'],
-			icon,
-			A2(_elm_lang$core$List_ops['::'], message, submenus)));
-};
 var _user$project$Main$main = {
 	main: _elm_lang$html$Html_App$program(
 		{
 			init: _user$project$Main$init,
 			view: _user$project$Main$view,
 			update: _user$project$Main$update,
-			subscriptions: function (_p2) {
-				return _elm_lang$animation_frame$AnimationFrame$times(_user$project$Main$Animate);
+			subscriptions: function (_p7) {
+				return _elm_lang$animation_frame$AnimationFrame$times(_user$project$Msg$Animate);
 			}
 		})
+};
+var _user$project$Main$Model = F4(
+	function (a, b, c, d) {
+		return {submenus: a, open: b, message: c, sheet: d};
+	});
+var _user$project$Main$Submenu = function (a) {
+	return {icon: a};
 };
 
 var Elm = {};

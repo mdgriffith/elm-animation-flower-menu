@@ -18,25 +18,20 @@ import Style
 import Style.Properties exposing (..)
 import Style.Sheet
 import Animation
+import Msg exposing (..)
 
 
 type alias Model =
     { submenus : List Submenu
     , open : Bool
     , message : Maybe String
-    , sheet : Style.Sheet.Model Animation.Class
+    , sheet : Style.Sheet.Model Animation.Class Msg
     }
 
 
 type alias Submenu =
     { icon : String
     }
-
-
-type Msg
-    = Toggle
-    | ShowMessage String
-    | Animate Time
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -66,10 +61,32 @@ update message model =
             , Cmd.none
             )
 
+        Print str ->
+            let
+                _ =
+                    Debug.log "print" str
+            in
+                ( model, Cmd.none )
+
         Animate time ->
-            ( { model | sheet = Style.Sheet.tick time model.sheet }
-            , Cmd.none
-            )
+            let
+                ( newSheet, messages ) =
+                    Style.Sheet.tick time model.sheet
+            in
+                List.foldl
+                    (\msg ( model, cmds ) ->
+                        let
+                            ( new, newCmds ) =
+                                update msg model
+                        in
+                            ( new, Cmd.batch [ cmds, newCmds ] )
+                    )
+                    ( { model
+                        | sheet = newSheet
+                      }
+                    , Cmd.none
+                    )
+                    messages
 
 
 view : Model -> Html Msg
@@ -104,7 +121,7 @@ view model =
             (icon :: message :: submenus)
 
 
-viewSubmenu : Style.Sheet.Model Animation.Class -> Int -> Submenu -> Html Msg
+viewSubmenu : Style.Sheet.Model Animation.Class Msg -> Int -> Submenu -> Html Msg
 viewSubmenu sheet id submenu =
     div
         [ class "child-button"

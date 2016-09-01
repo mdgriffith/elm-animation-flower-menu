@@ -4,6 +4,7 @@ import Style
 import Style.Properties exposing (..)
 import Style.Sheet
 import Time exposing (second, Time)
+import Msg exposing (..)
 
 
 type Class
@@ -29,17 +30,20 @@ isSubmenu id =
             False
 
 
-
---
-
-
-init : List Class -> List ( Class, Style.Animation )
+init : List Class -> List ( Class, Style.Animation Msg )
 init ids =
-    Style.Sheet.init (initStyle ids) ids
+    Style.Sheet.initWith
+        { spring =
+            { stiffness = 170
+            , damping = 26
+            }
+        }
+        (initStyle ids)
+        ids
 
 
 
---initStyle : List Class -> Class -> Style.Animation
+--initStyle : List Class -> Class -> Style.Style
 
 
 initStyle ids id =
@@ -70,57 +74,37 @@ initStyle ids id =
                 ]
 
 
-open : Class -> Style.Animation -> Style.Animation
+open : Class -> Style.Animation Msg -> Style.Animation Msg
 open id style =
     case id of
         Menu ->
-            Style.animate
-                |> Style.spring
-                    { stiffness = 500
-                    , damping = 30
-                    }
-                |> Style.to
-                    [ Rotate 0 Turn
-                    ]
-                |> Style.on style
+            Style.interrupt [ rotate (turn 0) ] styleModel
 
         Submenu i ->
-            Style.animate
-                |> Style.delay (toFloat i * 2.5e-2 * second)
-                |> Style.spring
-                    { stiffness = 400
-                    , damping = 28
-                    }
-                |> Style.to
-                    [ TranslateY 100 Px
-                    ]
-                |> Style.on style
+            Style.interrupt
+                [ wait (toFloat i * 2.5e-2 * second)
+                , translateY (px 100)
+                ]
+                styleModel
 
         _ ->
             style
 
 
-close : Class -> Style.Animation -> Style.Animation
+close : Class -> Style.Animation Msg -> Style.Animation Msg
 close id style =
     case id of
         Menu ->
             Style.animate
-                |> Style.spring
-                    { stiffness = 500
-                    , damping = 30
-                    }
                 |> Style.to
                     [ Rotate -0.125 Turn
                     ]
+                |> Style.send (Print "finished closing")
                 |> Style.on style
 
         Submenu i ->
             Style.animate
-                |> Style.delay (toFloat i * 5.0e-2 * second)
-                |> Style.spring
-                    { stiffness = 400
-                    , damping = 28
-                    }
+                |> Style.wait (toFloat i * 5.0e-2 * second)
                 |> Style.to [ TranslateY 0 Px ]
                 |> Style.on style
 
@@ -128,7 +112,7 @@ close id style =
             style
 
 
-showMsg : Class -> Style.Animation -> Style.Animation
+showMsg : Class -> Style.Animation Msg -> Style.Animation Msg
 showMsg id style =
     case id of
         Message ->
@@ -136,11 +120,9 @@ showMsg id style =
                 |> Style.to
                     [ Opacity 1
                     ]
-                |> Style.andThen
                 |> Style.to
                     [ Opacity 0
                     ]
-                |> Style.andThen
                 |> Style.set
                     [ Display None
                     ]
