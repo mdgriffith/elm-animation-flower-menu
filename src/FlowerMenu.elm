@@ -13,25 +13,41 @@ import Html.App
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import AnimationFrame
-import Style
-import Style.Properties exposing (..)
-import Style.Sheet
-import Animation
-import Msg exposing (..)
+import Animation exposing (turn, px)
+import Animation.Messenger
+import Color
+
+
+type Msg
+    = Toggle
+    | ClickSubmenu Int
+    | Animate Animation.Msg
 
 
 type alias Model =
     { submenus : List Submenu
     , open : Bool
-    , message : Maybe String
-    , sheet : Style.Sheet.Model Animation.Class Msg
+    , message : ( String, Animation.State )
+    , menu : Animation.Messenger.State Msg
     }
 
 
 type alias Submenu =
     { icon : String
+    , style : Animation.State
     }
+
+
+onSubmenuStyle : (Int -> Animation.State -> Animation.State) -> List Submenu -> List Submenu
+onSubmenuStyle fn submenus =
+    List.indexedMap
+        (\i submenu ->
+            { submenu
+                | style =
+                    fn i submenu.style
+            }
+        )
+        submenus
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -39,54 +55,113 @@ update message model =
     case message of
         Toggle ->
             if model.open then
-                ( { model
-                    | open = False
-                    , sheet = Style.Sheet.update Animation.close model.sheet
-                  }
-                , Cmd.none
-                )
-            else
-                ( { model
-                    | open = True
-                    , sheet = Style.Sheet.update Animation.open model.sheet
-                  }
-                , Cmd.none
-                )
+                -- Close the menu
+                let
+                    newMenu =
+                        Animation.interrupt
+                            [ Animation.to
+                                [ Animation.rotate (turn -0.125)
+                                ]
+                            ]
+                            model.menu
 
-        ShowMessage str ->
-            ( { model
-                | message = Just str
-                , sheet = Style.Sheet.update Animation.showMsg model.sheet
-              }
-            , Cmd.none
-            )
-
-        Print str ->
-            let
-                _ =
-                    Debug.log "print" str
-            in
-                ( model, Cmd.none )
-
-        Animate time ->
-            let
-                ( newSheet, messages ) =
-                    Style.Sheet.tick time model.sheet
-            in
-                List.foldl
-                    (\msg ( model, cmds ) ->
-                        let
-                            ( new, newCmds ) =
-                                update msg model
-                        in
-                            ( new, Cmd.batch [ cmds, newCmds ] )
-                    )
+                    newSubmenus =
+                        onSubmenuStyle
+                            (\i style ->
+                                Animation.interrupt
+                                    [ Animation.wait (toFloat i * 5.0e-2 * second)
+                                    , Animation.to [ Animation.translateY (px 0) ]
+                                    ]
+                                    style
+                            )
+                            model.submenus
+                in
                     ( { model
-                        | sheet = newSheet
+                        | open = False
+                        , submenus = newSubmenus
+                        , menu = newMenu
                       }
                     , Cmd.none
                     )
-                    messages
+            else
+                -- open the menu
+                let
+                    newMenu =
+                        Animation.interrupt
+                            [ Animation.to
+                                [ Animation.rotate (turn 0)
+                                ]
+                            ]
+                            model.menu
+
+                    newSubmenus =
+                        onSubmenuStyle
+                            (\i style ->
+                                Animation.interrupt
+                                    [ Animation.wait (toFloat i * 5.0e-2 * second)
+                                    , Animation.to [ Animation.translateY (px 100) ]
+                                    ]
+                                    style
+                            )
+                            model.submenus
+                in
+                    ( { model
+                        | open = True
+                        , submenus = newSubmenus
+                        , menu = newMenu
+                      }
+                    , Cmd.none
+                    )
+
+        ClickSubmenu i ->
+            let
+                msg =
+                    Maybe.withDefault "whoops" <|
+                        Maybe.map .icon <|
+                            List.head <|
+                                List.drop i model.submenus
+
+                newMessageAnim =
+                    Animation.interrupt
+                        [ Animation.to
+                            [ Animation.opacity 1
+                            ]
+                        , Animation.wait (1 * second)
+                        , Animation.to
+                            [ Animation.opacity 0
+                            ]
+                        ]
+                        (snd model.message)
+            in
+                ( { model
+                    | message =
+                        ( msg, newMessageAnim )
+                  }
+                , Cmd.none
+                )
+
+        Animate time ->
+            let
+                ( newMenu, menuCmds ) =
+                    Animation.Messenger.update time model.menu
+
+                newSubmenus =
+                    onSubmenuStyle
+                        (\i style ->
+                            Animation.update time style
+                        )
+                        model.submenus
+
+                messageAnim =
+                    Animation.update time (snd model.message)
+            in
+                ( { model
+                    | menu = newMenu
+                    , submenus = newSubmenus
+                    , message = ( fst model.message, messageAnim )
+                  }
+                , menuCmds
+                )
 
 
 view : Model -> Html Msg
@@ -94,40 +169,35 @@ view model =
     let
         icon =
             i
-                [ class "fa fa-close fa-3x"
-                , style (Style.Sheet.render model.sheet Animation.Menu)
-                ]
+                (Animation.render model.menu
+                    ++ [ class "fa fa-close fa-3x"
+                       ]
+                )
                 []
 
         message =
-            case model.message of
-                Nothing ->
-                    div [] []
-
-                Just msg ->
-                    div
-                        [ class "message"
-                        , style (Style.Sheet.render model.sheet Animation.Message)
-                        ]
-                        [ text msg ]
-
-        submenus =
-            List.indexedMap (viewSubmenu model.sheet) model.submenus
+            div
+                (Animation.render (snd model.message)
+                    ++ [ class "message"
+                       ]
+                )
+                [ text (fst model.message) ]
     in
         div
             [ class "main-button"
             , onClick Toggle
             ]
-            (icon :: message :: submenus)
+            (icon :: message :: List.indexedMap viewSubmenu model.submenus)
 
 
-viewSubmenu : Style.Sheet.Model Animation.Class Msg -> Int -> Submenu -> Html Msg
-viewSubmenu sheet id submenu =
+viewSubmenu : Int -> Submenu -> Html Msg
+viewSubmenu index submenu =
     div
-        [ class "child-button"
-        , style (Style.Sheet.render sheet (Animation.Submenu id))
-        , onClick (ShowMessage submenu.icon)
-        ]
+        (Animation.render submenu.style
+            ++ [ class "child-button"
+               , onClick (ClickSubmenu index)
+               ]
+        )
         [ i [ class ("fa  fa-lg fa-" ++ submenu.icon) ] []
         ]
 
@@ -137,17 +207,48 @@ icons =
     List.take 5 [ "pencil", "at", "camera", "bell", "comment", "bolt", "ban", "code" ]
 
 
+makeSubmenu i icon =
+    { icon = icon
+    , style =
+        Animation.styleWith (Animation.spring { stiffness = 400, damping = 28 }) <|
+            let
+                adjustment =
+                    0.5 - (((toFloat (List.length icons) - 1) / 2.0) * fanAngle)
+
+                angle =
+                    (toFloat i * fanAngle) + adjustment
+            in
+                [ Animation.rotate (turn angle)
+                , Animation.translateY (px 0)
+                , Animation.rotate (turn (-1 * angle))
+                , Animation.backgroundColor Color.lightGrey
+                  -- Counter rotation so the icon is upright
+                ]
+    }
+
+
+{-| In Turns
+-}
+fanAngle : Float
+fanAngle =
+    0.11
+
+
 init =
     ( { open = False
-      , submenus =
-            List.map (\icon -> { icon = icon }) icons
-      , message = Nothing
-      , sheet =
-            Animation.init <|
-                [ Animation.Menu
-                , Animation.Message
+      , menu =
+            Animation.styleWith (Animation.spring { stiffness = 400, damping = 28 })
+                [ Animation.rotate (turn -0.125)
                 ]
-                    ++ List.map Animation.Submenu [0..List.length icons]
+      , submenus =
+            List.indexedMap makeSubmenu icons
+      , message =
+            ( ""
+            , Animation.style
+                [ Animation.display Animation.block
+                , Animation.opacity 0
+                ]
+            )
       }
     , Cmd.none
     )
@@ -158,5 +259,17 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = (\_ -> AnimationFrame.times Animate)
+        , subscriptions = subscriptions
         }
+
+
+subscriptions model =
+    Sub.batch <|
+        Animation.subscription model.menu Animate
+            :: Animation.subscription (snd model.message) Animate
+            :: (List.map
+                    (\submenu ->
+                        Animation.subscription submenu.style Animate
+                    )
+                    model.submenus
+               )
