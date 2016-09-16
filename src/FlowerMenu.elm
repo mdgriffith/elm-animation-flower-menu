@@ -70,7 +70,7 @@ update message model =
                             (\i style ->
                                 Animation.interrupt
                                     [ Animation.wait (toFloat i * 5.0e-2 * second)
-                                    , Animation.to [ Animation.translateY (px 0) ]
+                                    , Animation.to [ Animation.translate (px 0) (px 0) ]
                                     ]
                                     style
                             )
@@ -99,7 +99,7 @@ update message model =
                             (\i style ->
                                 Animation.interrupt
                                     [ Animation.wait (toFloat i * 5.0e-2 * second)
-                                    , Animation.to [ Animation.translateY (px 100) ]
+                                    , Animation.to [ Animation.translate (px 0) (px 100) ]
                                     ]
                                     style
                             )
@@ -219,7 +219,7 @@ makeSubmenu i icon =
                     (toFloat i * fanAngle) + adjustment
             in
                 [ Animation.rotate (turn angle)
-                , Animation.translateY (px 0)
+                , Animation.translate (px 0) (px 0)
                 , Animation.rotate (turn (-1 * angle))
                 , Animation.backgroundColor Color.lightGrey
                   -- Counter rotation so the icon is upright
@@ -263,13 +263,13 @@ main =
         }
 
 
+{-| We have two subscriptions to our animations because we're using both Animation.State and Animation.Messenger.State, which can't both live in the same list.
+
+-}
 subscriptions model =
-    Sub.batch <|
-        Animation.subscription model.menu Animate
-            :: Animation.subscription (snd model.message) Animate
-            :: (List.map
-                    (\submenu ->
-                        Animation.subscription submenu.style Animate
-                    )
-                    model.submenus
-               )
+    Sub.batch
+        [ Animation.subscription Animate
+            (snd model.message :: List.map .style model.submenus)
+        , Animation.subscription Animate
+            [ model.menu ]
+        ]
